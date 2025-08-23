@@ -1,0 +1,20 @@
+server:
+  port: 8080
+
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/orders
+    username: app
+    password: pass
+    # driver-class-name nem kötelező, de beteheted:
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+
+  kafka:
+    bootstrap-servers: localhost:9092
+
+management:
+  endpoints.web.exposure.include: health,info,prometheus
