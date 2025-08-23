@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-parent</artifactId>
+    <version>3.4.9</version>
+    <relativePath/>
+  </parent>
+
+  <groupId>hu.porkolab.chaosSymphony</groupId>
+  <artifactId>chaos-symphony</artifactId>
+  <version>0.0.1-SNAPSHOT</version>
+  <packaging>pom</packaging>
+  <name>chaos-symphony</name>
+
+  <properties>
+    <java.version>21</java.version>
+  </properties>
+
+  <modules>
+    <module>order-api</module>
+    <module>orchestrator</module>
+    <module>payment-svc</module>
+    <module>inventory-svc</module>
+    <module>shipping-svc</module>
+    <module>chaos-svc</module>
+    <module>dlq-admin</module>
+    <module>streams-analytics</module>
+  </modules>
+
+  <!-- Közös verziószabályozás: ha kell extra lib, ide tedd -->
+  <dependencyManagement>
+    <dependencies>
+      <!-- példa: ha egységesen akarsz egy nem-boot-managed verziót beállítani,
+           itt add meg, és a modulokban csak groupId/artifactId kelljen -->
+      <!-- üres most; a Boot parent már menedzseli a legtöbb verziót -->
+    </dependencies>
+  </dependencyManagement>
+
+  <!-- PluginManagement: opcionális; a Boot plugin a GYERMEK modulokban legyen -->
+  <build>
+    <pluginManagement>
+      <plugins>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-compiler-plugin</artifactId>
+          <configuration>
+            <release>${java.version}</release>
+          </configuration>
+        </plugin>
+      </plugins>
+    </pluginManagement>
+  </build>
+</project>
