@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd" xmlns="http://maven.apache.org/POM/4.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <modelVersion>4.0.0</modelVersion>
+  <parent>
+    <groupId>hu.porkolab.chaosSymphony</groupId>
+    <artifactId>chaos-symphony</artifactId>
+    <version>1.0.0</version>
+    <relativePath>..</relativePath>
+  </parent>
+  <groupId>hu.porkolab.chaosSymphony</groupId>
+  <artifactId>common-messaging</artifactId>
+  <packaging>jar</packaging>
+  <version>1.0.0</version>
+  <name>common-messaging</name>
+  <url>http://maven.apache.org</url>
+  <dependencies>
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <version>3.8.1</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
+    </dependency>
+  </dependencies>
+</project>

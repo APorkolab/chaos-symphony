@@ -2,26 +2,28 @@ package hu.porkolab.chaosSymphony.orchestrator.kafka;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.extern.slf4j.Slf4j;
+import hu.porkolab.chaosSymphony.common.EventEnvelope;
+import hu.porkolab.chaosSymphony.common.EnvelopeHelper;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
-@Slf4j
 @Component
-public class PaymentResultListener {
+public class ShippingResultListener {
+
 	private final ObjectMapper om = new ObjectMapper();
 
-	@KafkaListener(topics = "payment.result", groupId = "orchestrator-1")
+	@KafkaListener(topics = "shipping.result", groupId = "orchestrator-1")
 	public void onResult(ConsumerRecord<String, String> rec) {
 		try {
-			JsonNode msg = om.readTree(rec.value());
-			String orderId = msg.path("orderId").asText();
+			EventEnvelope env = EnvelopeHelper.parse(rec.value());
+			String orderId = env.getOrderId();
+			JsonNode msg = om.readTree(env.getPayload());
 			String status = msg.path("status").asText();
-			log.info("PaymentResult for orderId={} -> {}", orderId, status);
-			// Holnap: if CHARGED -> inventory.requested, else -> compensate (refund)
+
+			System.out.println("Order " + orderId + " shipping finished with: " + status);
 		} catch (Exception e) {
-			log.error("PaymentResult parse error: {}", rec.value(), e);
+			e.printStackTrace();
 		}
 	}
 }

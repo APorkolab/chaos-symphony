@@ -1,26 +1,19 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+<?xml version="1.0" encoding="UTF-8"?><project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
-
   <parent>
     <groupId>org.springframework.boot</groupId>
     <artifactId>spring-boot-starter-parent</artifactId>
     <version>3.4.9</version>
     <relativePath/>
   </parent>
-
   <groupId>hu.porkolab.chaosSymphony</groupId>
   <artifactId>chaos-symphony</artifactId>
-  <version>0.0.1-SNAPSHOT</version>
+  <version>1.0.0</version>
   <packaging>pom</packaging>
   <name>chaos-symphony</name>
-
   <properties>
     <java.version>21</java.version>
   </properties>
-
   <modules>
     <module>order-api</module>
     <module>orchestrator</module>
@@ -30,8 +23,8 @@
     <module>chaos-svc</module>
     <module>dlq-admin</module>
     <module>streams-analytics</module>
+    <module>common-messaging</module>
   </modules>
-
   <!-- Közös verziószabályozás: ha kell extra lib, ide tedd -->
   <dependencyManagement>
     <dependencies>
@@ -40,7 +33,6 @@
       <!-- üres most; a Boot parent már menedzseli a legtöbb verziót -->
     </dependencies>
   </dependencyManagement>
-
   <!-- PluginManagement: opcionális; a Boot plugin a GYERMEK modulokban legyen -->
   <build>
     <pluginManagement>

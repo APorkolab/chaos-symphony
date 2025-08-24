@@ -1,23 +1,46 @@
 package hu.porkolab.chaosSymphony.orderapi.api;
 
-import hu.porkolab.chaosSymphony.orderapi.app.OrderService;
-import lombok.RequiredArgsConstructor;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import hu.porkolab.chaosSymphony.orderapi.kafka.PaymentRequestProducer;
 import org.springframework.http.ResponseEntity;
-import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Map;
 import java.util.UUID;
 
 @RestController
-@RequiredArgsConstructor
 @RequestMapping("/api/orders")
 public class OrderController {
-	private final OrderService service;
 
-	@PostMapping
-	public ResponseEntity<Map<String, Object>> create(@RequestBody @Validated CreateOrder cmd) {
-		UUID id = service.createOrder(cmd);
-		return ResponseEntity.ok(Map.of("orderId", id.toString(), "status", "NEW"));
+	private final PaymentRequestProducer producer;
+	private final ObjectMapper om = new ObjectMapper();
+
+	public OrderController(PaymentRequestProducer producer) {
+		this.producer = producer;
+	}
+
+	// REST endpoint: indítja az order folyamatot
+	@PostMapping("/{orderId}/start")
+	public ResponseEntity<String> startOrder(@PathVariable String orderId, @RequestParam double amount) {
+		try {
+			// payload (üzleti adat)
+			String payload = om.createObjectNode()
+					.put("orderId", orderId)
+					.put("amount", amount)
+					.toString();
+
+			// payment.requested üzenet küldése
+			producer.sendRequest(orderId, payload);
+
+			return ResponseEntity.ok("Order " + orderId + " started.");
+		} catch (Exception e) {
+			return ResponseEntity.internalServerError().body("Error starting order: " + e.getMessage());
+		}
+	}
+
+	// Extra: ha nincs orderId, generálunk
+	@PostMapping("/start")
+	public ResponseEntity<String> startNewOrder(@RequestParam double amount) {
+		String orderId = UUID.randomUUID().toString();
+		return startOrder(orderId, amount);
 	}
 }

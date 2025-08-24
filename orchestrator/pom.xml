@@ -6,7 +6,7 @@
   <parent>
     <groupId>hu.porkolab.chaosSymphony</groupId>
     <artifactId>chaos-symphony</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>1.0.0</version>
   </parent>
 
   <artifactId>orchestrator</artifactId>
@@ -50,6 +50,14 @@
       <artifactId>spring-boot-starter-test</artifactId>
       <scope>test</scope>
     </dependency>
+    
+    <!-- Common messaging library -->
+    <dependency>
+      <groupId>hu.porkolab.chaosSymphony</groupId>
+      <artifactId>common-messaging</artifactId>
+      <version>1.0.0</version>
+    </dependency>
+    
   </dependencies>
 
   <build>
