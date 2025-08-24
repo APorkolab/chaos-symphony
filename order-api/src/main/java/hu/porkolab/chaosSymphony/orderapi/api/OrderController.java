@@ -41,6 +41,7 @@ public class OrderController {
 	@PostMapping("/start")
 	public ResponseEntity<String> startNewOrder(@RequestParam double amount) {
 		String orderId = UUID.randomUUID().toString();
+		System.out.println("[ORDER-API] startOrder orderId=" + orderId + " amount=" + amount);
 		return startOrder(orderId, amount);
 	}
 }

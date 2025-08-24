@@ -1,4 +1,4 @@
-package hu.porkolab.chaosSymphony.kafka;
+package hu.porkolab.chaosSymphony.payment.kafka;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -37,9 +37,11 @@ public class PaymentRequestedListener {
 					.put("amount", amount)
 					.toString();
 
+			System.out.println("[PAYMENT] processed orderId=" + orderId + " -> " + (success ? "CHARGED" : "FAILED"));
 			producer.sendResult(orderId, resultPayload);
 
 		} catch (Exception e) {
+			System.err.println("[PAYMENT] error processing: " + rec.value());
 			e.printStackTrace();
 		}
 	}

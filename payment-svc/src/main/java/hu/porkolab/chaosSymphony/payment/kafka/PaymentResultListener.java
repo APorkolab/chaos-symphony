@@ -1,4 +1,4 @@
-package hu.porkolab.chaosSymphony.kafka;
+package hu.porkolab.chaosSymphony.payment.kafka;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;

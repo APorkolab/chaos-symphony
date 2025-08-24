@@ -3,15 +3,13 @@ server:
 
 spring:
   kafka:
-    bootstrap-servers: localhost:29092
+    bootstrap-servers: 127.0.0.1:29092
     consumer:
-      group-id: orchestrator-1
       auto-offset-reset: earliest
-      properties:
-        spring.json.trusted.packages: "*"
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
     producer:
-      acks: all
-      properties:
-        linger.ms: 5
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
 
 management.endpoints.web.exposure.include: health,info,prometheus
