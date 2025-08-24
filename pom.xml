@@ -31,7 +31,8 @@
       <!-- példa: ha egységesen akarsz egy nem-boot-managed verziót beállítani,
            itt add meg, és a modulokban csak groupId/artifactId kelljen -->
       <!-- üres most; a Boot parent már menedzseli a legtöbb verziót -->
-    </dependencies>
+
+      </dependencies>
   </dependencyManagement>
   <!-- PluginManagement: opcionális; a Boot plugin a GYERMEK modulokban legyen -->
   <build>

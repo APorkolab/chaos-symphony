@@ -41,13 +41,19 @@
     <dependency>
       <groupId>org.springframework.kafka</groupId>
       <artifactId>spring-kafka</artifactId>
-      <version>3.0.11</version>
+      <version>3.3.9</version>
     </dependency>
 
     <!-- SLF4J API (Logger/LoggerFactory) — Boot starter is hozza, de biztos ami biztos -->
     <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-api</artifactId>
+    </dependency>    
+    
+    <!-- Spring Boot Starter, ha önálló lib és nem Boot app tölti be -->
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-web</artifactId>
     </dependency>
 
     <!-- (opcionális) Logback, ha önálló lib és nem Boot app tölti be -->

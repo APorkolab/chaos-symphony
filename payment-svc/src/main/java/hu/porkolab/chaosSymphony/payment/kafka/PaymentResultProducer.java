@@ -10,21 +10,20 @@ import org.springframework.stereotype.Component;
 @Component
 public class PaymentResultProducer {
 
-	private final ChaosProducer chaos;
+    private final ChaosProducer chaos;
 
-	public PaymentResultProducer(ChaosProducer chaos) {
-		this.chaos = chaos;
-	}
+    public PaymentResultProducer(ChaosProducer chaos) {
+        this.chaos = chaos;
+    }
 
-	public void sendResult(String orderId, String resultPayloadJson) {
-		String msg = EnvelopeHelper.envelope(orderId, "PaymentResult", resultPayloadJson);
-		chaos.send("payment.result", orderId, "PaymentResult", msg);
-	}
+    public void sendResult(String orderId, String resultPayloadJson) {
+        String msg = EnvelopeHelper.envelope(orderId, "PaymentResult", resultPayloadJson);
+        chaos.send("payment.result", orderId, "PaymentResult", msg);
+    }
 
-	// Beanek ugyanebben a modulban (egyszerű fix, később kiteheted config
-	// osztályba)
-	@Bean
-	public ChaosProducer chaosProducer(KafkaTemplate<String, String> tpl, ChaosRules rules) {
-		return new ChaosProducer(tpl, rules);
-	}
+    // Beanek ugyanebben a modulban (egyszerű fix, később kiteheted config osztályba)
+		@Bean
+		public ChaosProducer chaosProducer(KafkaTemplate<String, String> tpl, ChaosRules rules) {
+			return new ChaosProducer(tpl, () -> rules); // Supplier használata
+		}
 }

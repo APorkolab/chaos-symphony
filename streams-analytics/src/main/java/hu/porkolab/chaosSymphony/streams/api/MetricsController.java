@@ -3,6 +3,7 @@ package hu.porkolab.chaosSymphony.streams.api;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.state.*;
 import org.springframework.web.bind.annotation.*;
+import org.apache.kafka.streams.state.StoreQueryParameters;
 
 import java.util.*;
 

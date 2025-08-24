@@ -8,6 +8,92 @@
 
 # Chaos Symphony – Outbox EventRouter
 
+
+Event-driven demo (Java 21, Spring Boot 3.4, Kafka) – Payment → Inventory → Shipping, orchestration, Chaos injection, DLT replay, Streams analytics.
+
+## Indítás 3 lépésben
+```bash
+cd deployment
+docker compose up -d
+mvn -q -pl "order-api,payment-svc,inventory-svc,shipping-svc,orchestrator,dlq-admin,streams-analytics" spring-boot:run
+./scripts/load.sh 50
+
+```
+
+# Architektúra
+
+flowchart LR
+  A[order-api] -- payment.requested --> P[payment-svc]
+  P -- payment.result --> O[orchestrator]
+  O -- inventory.requested --> I[inventory-svc]
+  I -- inventory.result --> O
+  O -- shipping.requested --> S[shipping-svc]
+  S -- shipping.result --> O
+  O --> AN[streams-analytics]
+  classDef svc fill:#0f172a,stroke:#94a3b8,color:#e2e8f0;
+  class A,P,O,I,S,AN svc
+
+
+
+
+# Service portok
+
+order-api: 8080
+
+payment-svc: 8081
+
+inventory-svc: 8084
+
+shipping-svc: 8085
+
+orchestrator: 8091
+
+dlq-admin: 8089
+
+streams-analytics: 8095
+
+Kafdrop: 9000 (http://localhost:9000)
+
+Kafka topikok
+
+payment.requested → payment.result
+
+inventory.requested → inventory.result
+
+shipping.requested → shipping.result
+
+DLT: *.DLT
+
+Analytics: analytics.payment.status.count
+
+# Gyors API-k
+
+
+## rendelés indítás
+curl -X POST "http://localhost:8080/api/orders/start?amount=100"
+
+## DLQ lista + replay
+curl -s http://localhost:8089/api/dlq/topics
+curl -X POST http://localhost:8089/api/dlq/payment.result.DLT/replay
+
+## Streams metrics (ha bekapcsoltad a REST-et)
+curl -s http://localhost:8095/api/metrics/paymentStatus
+
+# Chaos szabályok (példa)
+
+curl -X POST http://localhost:8088/api/chaos/rules \
+  -H "Content-Type: application/json" \
+  -d '{"topic:payment.result":{"pDrop":0.15,"pDup":0.05,"maxDelayMs":300,"pCorrupt":0.02}}'
+
+
+# Screenshotok
+
+Kafdrop – topicok / üzenetfolyam
+
+Grafana – metrikák
+
+# asd
+
 ---
 
 # A) Postgres **Dockerben**
