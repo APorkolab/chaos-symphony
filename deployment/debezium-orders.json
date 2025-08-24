@@ -1,0 +1,32 @@
+{
+  "name": "orders-connector",
+  "config": {
+    "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+    "database.hostname": "host.docker.internal",
+    "database.port": "5432",
+    "database.user": "debezium",
+    "database.password": "dbz",
+    "database.dbname": "orders",
+    "topic.prefix": "ordersdb",
+    "slot.name": "orders_slot",
+    "publication.autocreate.mode": "filtered",
+    "plugin.name": "pgoutput",
+
+    "schema.include.list": "public",
+    "table.include.list": "public.order_outbox",
+
+    "tombstones.on.delete": "false",
+
+    "transforms": "outbox",
+    "transforms.outbox.type": "io.debezium.transforms.outbox.EventRouter",
+
+    "transforms.outbox.route.topic.replacement": "orders.$r",
+    "transforms.outbox.table.field.event.id": "id",
+    "transforms.outbox.table.field.event.key": "aggregate_id",
+    "transforms.outbox.table.field.event.type": "type",
+    "transforms.outbox.table.field.event.timestamp": "occurred_at",
+    "transforms.outbox.table.field.payload": "payload",
+    "transforms.outbox.table.fields.additional.placement": "type:header:eventType,aggregate_id:header:aggregateId",
+    "transforms.outbox.table.expand.headers": "true"
+  }
+}

@@ -1,0 +1,7 @@
+package hu.porkolab.chaosSymphony.orderapi.domain;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import java.util.UUID;
+
+public interface OrderOutboxRepository extends JpaRepository<OrderOutbox, UUID> {
+}
