@@ -3,10 +3,15 @@ server:
 
 spring:
   kafka:
-    bootstrap-servers: localhost:9092
+    bootstrap-servers: localhost:29092
+    consumer:
+      group-id: orchestrator-1
+      auto-offset-reset: earliest
+      properties:
+        spring.json.trusted.packages: "*"
+    producer:
+      acks: all
+      properties:
+        linger.ms: 5
 
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info,prometheus
+management.endpoints.web.exposure.include: health,info,prometheus

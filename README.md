@@ -373,6 +373,9 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO app;
 ```sql
 DROP PUBLICATION IF EXISTS dbz_publication;
 CREATE PUBLICATION dbz_publication FOR TABLE public.order_outbox;
+create index if not exists idx_order_outbox_aggregate on order_outbox (aggregate_id);
+create index if not exists idx_order_outbox_type_occurred on order_outbox (type, occurred_at);
+
 ```
 
 Ellenőrzés:

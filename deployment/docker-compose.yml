@@ -1,37 +1,30 @@
 version: "3.9"
-
 services:
   zookeeper:
     image: confluentinc/cp-zookeeper:7.6.1
-    container_name: zookeeper
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
+    environment: { ZOOKEEPER_CLIENT_PORT: 2181 }
     networks: [chaos-net]
 
   kafka:
     image: confluentinc/cp-kafka:7.6.1
-    container_name: kafka
     depends_on: [zookeeper]
     ports:
-      - "9092:9092"
+      - "29092:29092"
     environment:
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      # két listener: belső (kafka:9092) és host (localhost:9092)
-      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_HOST://0.0.0.0:29092
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:9092
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_HOST://0.0.0.0:29092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
     networks: [chaos-net]
 
   connect:
     image: debezium/connect:2.6
-    container_name: connect
     depends_on: [kafka]
-    ports:
-      - "8083:8083"
+    ports: ["8083:8083"]
     environment:
-      BOOTSTRAP_SERVERS: kafka:9092   # ugyanazon hálón van → így jó
+      BOOTSTRAP_SERVERS: kafka:9092
       GROUP_ID: "debezium"
       CONFIG_STORAGE_TOPIC: "debezium-config"
       OFFSET_STORAGE_TOPIC: "debezium-offset"
@@ -44,10 +37,8 @@ services:
 
   kafdrop:
     image: obsidiandynamics/kafdrop:latest
-    container_name: kafdrop
     depends_on: [kafka]
-    ports:
-      - "9000:9000"
+    ports: ["9000:9000"]
     environment:
       KAFKA_BROKERCONNECT: "kafka:9092"
     networks: [chaos-net]
