@@ -17,6 +17,8 @@ spring:
 
   kafka:
     bootstrap-servers: 127.0.0.1:29092
+    listener:
+      ack-mode: record
     consumer:
       auto-offset-reset: earliest
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer

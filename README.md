@@ -505,3 +505,32 @@ létrehozza/újraépíti a dbz_publication-t az outbox táblára,
 felkonfigurálja a Debezium Postgres connectort Outbox SMT-vel (timestamp nélkül, így nem buksz az INT64-en),
 
 kiírja a connector státuszát és a replikációs slot állapotát.
+
+
+
+ #  README-hez 3 parancs
+
+```bash
+
+docker compose up -d                                  # infra
+mvn -q -pl "order-api,payment-svc,inventory-svc,shipping-svc,orchestrator,dlq-admin,streams-analytics" spring-boot:run
+./scripts/load.sh 100
+```
+
+DLQ replay példa:
+
+```bash
+   curl -s http://localhost:8089/api/dlq/topics
+   curl -X POST http://localhost:8089/api/dlq/payment.result.DLT/replay
+
+```
+
+
+
+Chaos szabály példa (ha bekötöd a chaos-svc-t REST-tel):
+
+```bash
+curl -X POST http://localhost:8088/api/chaos/rules \
+  -H "Content-Type: application/json" \
+  -d '{"topic:payment.result":{"pDrop":0.15,"pDup":0.05,"maxDelayMs":300,"pCorrupt":0.02}}'
+```

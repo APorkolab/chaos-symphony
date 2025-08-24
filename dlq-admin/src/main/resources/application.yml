@@ -5,6 +5,8 @@ spring:
     time-zone: Europe/Budapest
   kafka:
     bootstrap-servers: 127.0.0.1:29092
+    listener:
+      ack-mode: record
     consumer:
       # ha nincs @KafkaListener-ben groupId, add meg itt:
       group-id: ${spring.application.name:-app}-grp

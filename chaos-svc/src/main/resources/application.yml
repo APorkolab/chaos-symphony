@@ -4,6 +4,8 @@ spring:
   jackson:
     time-zone: Europe/Budapest
   kafka:
+    listener:
+      ack-mode: record
     bootstrap-servers: 127.0.0.1:29092
     consumer:
       # ha nincs @KafkaListener-ben groupId, add meg itt:
