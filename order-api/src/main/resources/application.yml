@@ -12,6 +12,8 @@ spring:
     hibernate:
       ddl-auto: update
     open-in-view: false
+  jackson:
+    time-zone: Europe/Budapest
 
   kafka:
     bootstrap-servers: 127.0.0.1:29092
@@ -25,3 +27,13 @@ spring:
 
 management:
   endpoints.web.exposure.include: health,info,prometheus
+logging:
+  level:
+    root: INFO
+    org.springframework.kafka: INFO
+    hu.porkolab.chaosSymphony: DEBUG  
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] %logger{36} - %msg%n"
+
+
+    

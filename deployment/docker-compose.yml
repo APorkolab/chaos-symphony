@@ -17,7 +17,6 @@ services:
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://127.0.0.1:29092
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      TZ: Europe/Budapest
     networks: [chaos-net]
 
   connect:
@@ -41,7 +40,6 @@ services:
     depends_on: [kafka]
     ports: ["9000:9000"]
     environment:
-      TZ: Europe/Budapest
       KAFKA_BROKERCONNECT: "kafka:9092"
     networks: [chaos-net]
 
