@@ -1,12 +1,16 @@
 package hu.porkolab.chaosSymphony.orchestrator.kafka;
 
 import hu.porkolab.chaosSymphony.common.EnvelopeHelper;
+import org.apache.kafka.clients.producer.RecordMetadata;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 
 @Component
 public class InventoryRequestProducer {
 
+	private static final Logger log = LoggerFactory.getLogger(InventoryRequestProducer.class);
 	private final KafkaTemplate<String, String> kafka;
 
 	public InventoryRequestProducer(KafkaTemplate<String, String> kafka) {
@@ -14,7 +18,13 @@ public class InventoryRequestProducer {
 	}
 
 	public void sendRequest(String orderId, String payloadJson) {
-		String msg = EnvelopeHelper.envelope(orderId, "InventoryRequested", payloadJson);
-		kafka.send("inventory.requested", orderId, msg);
+		try {
+			String msg = EnvelopeHelper.envelope(orderId, "InventoryRequested", payloadJson);
+			RecordMetadata md = kafka.send("inventory.requested", orderId, msg).get().getRecordMetadata();
+			log.info("[ORCH] → inventory.requested key={} {}-{}@{}", orderId, md.topic(), md.partition(), md.offset());
+		} catch (Exception e) {
+			log.error("[ORCH] send inventory.requested failed key={} err={}", orderId, e.getMessage(), e);
+			throw new RuntimeException(e);
+		}
 	}
 }

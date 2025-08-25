@@ -8,7 +8,6 @@ import org.springframework.stereotype.Component;
 public class PaymentProducer {
 	private final KafkaTemplate<String, String> kafka = null;
 
-
 	public void sendPaymentRequested(String orderId, String paymentPayloadJson) {
 		String msg = EnvelopeHelper.envelope(orderId, "PaymentRequested", paymentPayloadJson);
 		kafka.send("payment.requested", orderId, msg);

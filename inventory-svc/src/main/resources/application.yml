@@ -7,9 +7,8 @@ spring:
     bootstrap-servers: 127.0.0.1:29092
     listener:
       ack-mode: record
+      type: single
     consumer:
-      # ha nincs @KafkaListener-ben groupId, add meg itt:
-      group-id: ${spring.application.name:-app}-grp
       auto-offset-reset: earliest
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
@@ -32,11 +31,40 @@ management:
 logging:
   level:
     root: INFO
-    org.springframework.kafka: DEBUG
+    org.springframework.kafka: INFO
     hu.porkolab.chaosSymphony: DEBUG
-    org.springframework.kafka.listener: DEBUG
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] %logger{36} - %msg%n"
-chaos:
-  refresh-ms: 5000
 
+# ----- default (dev) -----
+chaos:
+  retry:
+    strategy: exponential
+    max-attempts: 4            # 1 feldolgozás + 3 retry
+    initial-interval-ms: 300
+    multiplier: 2.0
+    max-interval-ms: 5000
+
+---
+spring:
+  config:
+    activate:
+      on-profile: chaos
+chaos:
+  retry:
+    strategy: exponential
+    max-attempts: 6
+    initial-interval-ms: 500
+    multiplier: 2.0
+    max-interval-ms: 15000
+
+---
+spring:
+  config:
+    activate:
+      on-profile: ci
+chaos:
+  retry:
+    strategy: fixed
+    max-attempts: 2
+    initial-interval-ms: 200
