@@ -13,7 +13,6 @@ import org.springframework.test.context.junit.jupiter.SpringExtension;
 @ExtendWith(SpringExtension.class)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Provider("PaymentSvc")
-// In a monorepo, it's often easiest to point directly to the consumer's pact output directory
 @PactFolder("../../../orchestrator/target/pacts")
 public class PactVerificationTest {
 

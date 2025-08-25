@@ -4,7 +4,6 @@
   <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
     <div *ngFor="let faultType of faultTypes" class="bg-gray-800 p-6 rounded-lg shadow-lg">
 
-      <!-- Header with Toggle -->
       <div class="flex items-center justify-between mb-4">
         <h2 class="text-2xl font-semibold text-blue-400">{{ faultType }}</h2>
         <label class="relative inline-flex items-center cursor-pointer">
@@ -17,9 +16,7 @@
         </label>
       </div>
 
-      <!-- Controls -->
       <div [class.opacity-50]="!localSettings[faultType].enabled">
-        <!-- Probability Slider -->
         <div class="mb-4">
           <label class="block mb-2 text-sm font-medium">Probability: {{ localSettings[faultType].probability * 100 | number:'1.0-0' }}%</label>
           <input
@@ -33,7 +30,6 @@
             [disabled]="!localSettings[faultType].enabled">
         </div>
 
-        <!-- Delay Input (only for DELAY fault type) -->
         <div *ngIf="faultType === 'DELAY'">
           <label class="block mb-2 text-sm font-medium">Delay (ms)</label>
           <input
@@ -47,7 +43,6 @@
 
     </div>
 
-    <!-- Canary Deployment Panel -->
     <div class="md:col-span-2 bg-gray-800 p-6 rounded-lg shadow-lg border-2 border-dashed border-cyan-500">
       <div class="flex items-center justify-between">
         <div>

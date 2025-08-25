@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { BehaviorSubject, Observable, of, tap, switchMap, forkJoin } from 'rxjs';
+import { BehaviorSubject, Observable, of, tap, switchMap } from 'rxjs';
 import { ChaosRule, ChaosSettings, FaultType } from './chaos.model';
 
 @Injectable({
@@ -52,8 +52,8 @@ export class ChaosService {
         if (setting.enabled) {
           const newRule = {
             targetTopic: 'all', // Target all topics for simplicity
-            types: [faultType],
-            p: setting.probability,
+            faultType: faultType,
+            probability: setting.probability,
             delayMs: setting.delayMs,
           };
           return this.http.post<ChaosRule>(this.apiUrl, newRule).pipe(

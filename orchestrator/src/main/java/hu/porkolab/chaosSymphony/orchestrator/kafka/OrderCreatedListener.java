@@ -14,29 +14,29 @@ import org.springframework.transaction.annotation.Transactional;
 @Component
 @RequiredArgsConstructor
 public class OrderCreatedListener {
-	private final PaymentProducer producer;
-	private final IdempotencyStore idempotencyStore;
-	private final ObjectMapper om = new ObjectMapper();
+    private final PaymentProducer producer;
+    private final IdempotencyStore idempotencyStore;
+    private final ObjectMapper om = new ObjectMapper();
 
-	@KafkaListener(topics = "order.created", groupId = "orchestrator-order-created")
-	@Transactional
-	public void onOrderCreated(ConsumerRecord<String, OrderCreated> rec) throws Exception {
-		if (!idempotencyStore.markIfFirst(rec.key())) {
-			log.warn("Duplicate message detected, skipping: {}", rec.key());
-			return;
-		}
+    @KafkaListener(topics = "order.created", groupId = "orchestrator-order-created")
+    @Transactional
+    public void onOrderCreated(ConsumerRecord<String, OrderCreated> rec) throws Exception {
+        if (!idempotencyStore.markIfFirst(rec.key())) {
+            log.warn("Duplicate message detected, skipping: {}", rec.key());
+            return;
+        }
 
-		OrderCreated event = rec.value();
-		String orderId = event.getOrderId().toString();
+        OrderCreated event = rec.value();
+        String orderId = event.getOrderId().toString();
 
-		log.info("OrderCreated received for orderId={} -> sending PaymentRequested", orderId);
+        log.info("OrderCreated received for orderId={} -> sending PaymentRequested", orderId);
 
-		String paymentPayload = om.createObjectNode()
-				.put("orderId", orderId)
-				.put("amount", event.getTotal())
-				.put("currency", event.getCurrency().toString())
-				.toString();
+        String paymentPayload = om.createObjectNode()
+                .put("orderId", orderId)
+                .put("amount", event.getTotal())
+                .put("currency", event.getCurrency().toString())
+                .toString();
 
-		producer.sendPaymentRequested(orderId, paymentPayload);
-	}
+        producer.sendPaymentRequested(orderId, paymentPayload);
+    }
 }

@@ -67,10 +67,15 @@ flowchart LR
 
 ## 🚀 Getting Started
 
-**Prerequisites:** Docker and Docker Compose.
 
 The entire system (all backend services, UI, and infrastructure) is fully containerized and can be started with a single command:
 
+**Prerequisites:** Docker, Java 21, Maven, Node.js & npm.
+
+The entire system can be started with just a few commands in separate terminals.
+
+
+**Terminal 1: Start Infrastructure**
 ```bash
 cd deployment
 docker compose up --build -d
@@ -79,6 +84,26 @@ docker compose up --build -d
 After a few minutes for services to build and start, the system will be available at:
 
 ## 📊 System Endpoints
+=======
+docker compose up -d
+```
+Wait for all containers to be healthy.
+
+**Terminal 2: Start Backend Services**
+```bash
+# This command runs all Spring Boot applications
+mvn -pl orchestrator,payment-svc,inventory-svc,shipping-svc,order-api,streams-analytics,dlq-admin,chaos-svc spring-boot:run
+```
+
+**Terminal 3: Start Frontend UI**
+```bash
+cd ui/dashboard
+npm install
+npm start
+```
+The UI is now available at `http://localhost:4200`.
+
+## 📊 Observability Stack
 
 Explore the running system using these tools:
   * **Application UI**: `http://localhost:4200`
