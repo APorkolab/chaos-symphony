@@ -1,5 +1,28 @@
 version: "3.9"
+
+volumes:
+  postgres-data:
+
+networks:
+  chaos-net:
+    driver: bridge
+
 services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: "orders"
+      POSTGRES_USER: "app"
+      POSTGRES_PASSWORD: "app"
+    ports: ["5432:5432"]
+    volumes: ["postgres-data:/var/lib/postgresql/data"]
+    networks: [chaos-net]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d orders"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   zookeeper:
     image: confluentinc/cp-zookeeper:7.6.1
     environment: { ZOOKEEPER_CLIENT_PORT: 2181 }
@@ -8,8 +31,7 @@ services:
   kafka:
     image: confluentinc/cp-kafka:7.6.1
     depends_on: [zookeeper]
-    ports:
-      - "29092:29092"
+    ports: ["29092:29092"]
     environment:
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
@@ -21,7 +43,11 @@ services:
 
   connect:
     image: debezium/connect:2.6
-    depends_on: [kafka]
+    depends_on:
+      kafka:
+        condition: service_started
+      postgres:
+        condition: service_healthy
     ports: ["8083:8083"]
     environment:
       BOOTSTRAP_SERVERS: kafka:9092
@@ -43,6 +69,15 @@ services:
       KAFKA_BROKERCONNECT: "kafka:9092"
     networks: [chaos-net]
 
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.90.1
+    command: ["--config=/etc/otel-collector-config.yml"]
+    volumes: ["./otel-collector-config.yml:/etc/otel-collector-config.yml"]
+    ports:
+      - "4317:4317" # OTLP gRPC
+      - "4318:4318" # OTLP HTTP
+    networks: [chaos-net]
+
   prometheus:
     image: prom/prometheus
     ports: ["9090:9090"]
@@ -56,8 +91,3 @@ services:
       - GF_SECURITY_ADMIN_PASSWORD=admin
     ports: ["${GRAFANA_PORT:-3000}:3000"]
     networks: [chaos-net]
-
-
-networks:
-  chaos-net:
-    driver: bridge

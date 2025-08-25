@@ -1,0 +1,19 @@
+<div class="flex h-screen bg-gray-800 text-white">
+  <!-- Sidebar -->
+  <div class="w-64 bg-gray-900 flex-shrink-0">
+    <div class="p-4 text-2xl font-bold border-b border-gray-700">
+      Chaos Symphony
+    </div>
+    <nav class="mt-4">
+      <a routerLink="/orders" routerLinkActive="bg-gray-700" class="block py-2 px-4 hover:bg-gray-700">Orders</a>
+      <a routerLink="/dlq" routerLinkActive="bg-gray-700" class="block py-2 px-4 hover:bg-gray-700">DLQ</a>
+      <a routerLink="/chaos" routerLinkActive="bg-gray-700" class="block py-2 px-4 hover:bg-gray-700">Chaos Panel</a>
+      <a routerLink="/slo" routerLinkActive="bg-gray-700" class="block py-2 px-4 hover:bg-gray-700">SLO</a>
+    </nav>
+  </div>
+
+  <!-- Main content -->
+  <main class="flex-1 p-6 overflow-y-auto">
+    <router-outlet></router-outlet>
+  </main>
+</div>
