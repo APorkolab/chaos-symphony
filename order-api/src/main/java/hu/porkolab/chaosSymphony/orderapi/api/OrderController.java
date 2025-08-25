@@ -1,49 +1,42 @@
 package hu.porkolab.chaosSymphony.orderapi.api;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import hu.porkolab.chaosSymphony.orderapi.kafka.PaymentRequestProducer;
-import io.micrometer.core.instrument.Counter;
+import hu.porkolab.chaosSymphony.orderapi.app.OrderService;
+import hu.porkolab.chaosSymphony.orderapi.domain.Order;
+import hu.porkolab.chaosSymphony.orderapi.domain.OrderRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/orders")
+@RequiredArgsConstructor
 public class OrderController {
-
-	private final PaymentRequestProducer producer;
-	private final ObjectMapper om = new ObjectMapper();
-
-	// Micrometer Counters
-	private final Counter ordersStarted;
-
-	public OrderController(PaymentRequestProducer producer,
-			Counter ordersStarted) {
-		this.producer = producer;
-		this.ordersStarted = ordersStarted;
-	}
-
-	@PostMapping("/{orderId}/start")
-	public ResponseEntity<String> startOrder(@PathVariable String orderId, @RequestParam double amount) {
-		try {
-			ordersStarted.increment();
-
-			String payload = om.createObjectNode()
-					.put("orderId", orderId)
-					.put("amount", amount)
-					.toString();
-
-			producer.sendRequest(orderId, payload);
-			return ResponseEntity.ok("Order " + orderId + " started.");
-		} catch (Exception e) {
-			return ResponseEntity.internalServerError().body("Error starting order: " + e.getMessage());
-		}
-	}
+	private final OrderService service;
+	private final OrderRepository repository;
 
 	@PostMapping("/start")
-	public ResponseEntity<String> startNewOrder(@RequestParam double amount) {
-		String orderId = UUID.randomUUID().toString();
-		return startOrder(orderId, amount);
+	public ResponseEntity<UUID> createOrder(@RequestParam BigDecimal amount) {
+		// The CreateOrder command object might have more fields in a real app
+		CreateOrder cmd = new CreateOrder(amount, null);
+		UUID orderId = service.createOrder(cmd);
+		return ResponseEntity.accepted().body(orderId);
+	}
+
+	@GetMapping
+	public List<Order> getAllOrders() {
+		// Return latest orders first
+		return repository.findAll(Sort.by(Sort.Direction.DESC, "createdAt"));
+	}
+
+	@GetMapping("/{id}")
+	public ResponseEntity<Order> getOrderById(@PathVariable UUID id) {
+		return repository.findById(id)
+				.map(ResponseEntity::ok)
+				.orElse(ResponseEntity.notFound().build());
 	}
 }

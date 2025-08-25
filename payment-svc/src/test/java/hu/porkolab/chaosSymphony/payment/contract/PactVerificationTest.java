@@ -18,7 +18,6 @@ import java.util.Map;
 @ExtendWith(SpringExtension.class)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Provider("PaymentSvc")
-// In a monorepo, it's often easiest to point directly to the consumer's pact output directory
 @PactFolder("../../../orchestrator/target/pacts")
 public class PactVerificationTest {
 
@@ -28,6 +27,7 @@ public class PactVerificationTest {
     @TestTemplate
     @ExtendWith(PactVerificationSpringProvider.class)
     void pactVerificationTestTemplate(PactVerificationContext context) {
+        // This will automatically run the verification against the running Spring Boot application
         context.verifyInteraction();
     }
 

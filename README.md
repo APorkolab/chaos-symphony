@@ -67,13 +67,24 @@ flowchart LR
 
 ## 🚀 Getting Started
 
+
+The entire system (all backend services, UI, and infrastructure) is fully containerized and can be started with a single command:
+
 **Prerequisites:** Docker, Java 21, Maven, Node.js & npm.
 
 The entire system can be started with just a few commands in separate terminals.
 
+
 **Terminal 1: Start Infrastructure**
 ```bash
 cd deployment
+docker compose up --build -d
+```
+
+After a few minutes for services to build and start, the system will be available at:
+
+## 📊 System Endpoints
+=======
 docker compose up -d
 ```
 Wait for all containers to be healthy.
