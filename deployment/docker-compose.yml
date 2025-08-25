@@ -50,8 +50,11 @@ services:
     networks: [chaos-net]
 
   grafana:
-    image: grafana/grafana
-    ports: ["3000:3000"]
+    image: grafana/grafana:latest
+    depends_on: [prometheus]
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    ports: ["${GRAFANA_PORT:-3000}:3000"]
     networks: [chaos-net]
 
 

@@ -9,9 +9,19 @@
 # Chaos Symphony – Outbox EventRouter
 
 
-README.md (rövid váz):
-
 # Chaos Symphony
+
+Event-driven Saga demo (Spring Boot + Kafka): order → payment → inventory → shipping → orchestrator.  
+Kiemelt extrák: egységes EventEnvelope, Chaos-injektor, DLQ + replay REST API, Kafka Streams analitika, Micrometer + Prometheus + Grafana, Kafdrop.
+
+## 1 percben
+- **Use case:** rendelés feldolgozása, részfolyamatok, hibatűrés, kompenzációs út (DLQ + replay).
+- **Gyorsstart:**
+  ```bash
+  cd deployment && docker compose up -d
+  mvn -q -pl order-api,orchestrator,payment-svc,inventory-svc,shipping-svc spring-boot:run -Dspring-boot.run.profiles=local
+  curl -s "http://localhost:8081/api/orders/start?amount=123"
+```
 
 ## Run
 ```bash
@@ -19,6 +29,9 @@ cd deployment && docker compose up -d
 mvn -q -DskipTests install
 mvn -pl orchestrator,payment-svc,inventory-svc,shipping-svc,order-api,streams-analytics,dlq-admin spring-boot:run
 
+```
+
+```bash
 
 # start order
 curl -s -X POST "http://localhost:8080/api/orders/start?amount=42"
@@ -27,6 +40,41 @@ curl -s http://localhost:8087/api/metrics/paymentStatus
 # DLQ list
 curl -s http://localhost:8086/api/dlq/topics
 
+```
+
+Chaos demó:
+curl -s "http://localhost:8081/api/orders/start?amount=10&orderId=BREAK-ME"
+curl -s http://localhost:8086/api/dlq/topics
+curl -s "http://localhost:8086/api/dlq/inventory.requested.DLT/peek?n=3"
+curl -X POST http://localhost:8086/api/dlq/inventory.requested.DLT/replay
+
+Metrika/Grafana:
+
+Prometheus: http://localhost:9090
+
+Grafana: http://localhost:3000 (admin/admin)
+
+Dashboard import: docs/grafana/orders-overview.json
+
+
+Arch
+
+Lásd: docs/arch/architecture.drawio.png
+Röviden: order-api → payment.requested → payment.result → orchestrator
+orchestrator → inventory.requested → inventory.result → orchestrator
+orchestrator → shipping.requested → shipping.result → orchestrator
+Chaos-injektor hibákat/delayeket/dropot generál. DLQ: *.DLT. Streams: analytics.payment.status.count.
+
+End-to-end példa
+
+# happy
+curl -s "http://localhost:8081/api/orders/start?amount=200"
+
+# DLQ demó
+curl -s "http://localhost:8081/api/orders/start?amount=1&orderId=BREAK-ME"
+curl -s http://localhost:8086/api/dlq/topics
+curl -s "http://localhost:8086/api/dlq/inventory.requested.DLT/peek?n=5"
+curl -X POST http://localhost:8086/api/dlq/inventory.requested.DLT/replay
 
 Break & Recover
 
@@ -41,6 +89,11 @@ curl -H "X-Admin-Token: secret123" -X POST http://localhost:8086/api/dlq/invento
 
 Event-driven demo (Java 21, Spring Boot 3.4, Kafka) – Payment → Inventory → Shipping, orchestration, Chaos injection, DLT replay, Streams analytics.
 
+
+
+
+
+
 ## Indítás 3 lépésben
 ```bash
 cd deployment
@@ -52,6 +105,7 @@ mvn -q -pl "order-api,payment-svc,inventory-svc,shipping-svc,orchestrator,dlq-ad
 
 # Architektúra
 
+```mermaid
 flowchart LR
   A[order-api] -- payment.requested --> P[payment-svc]
   P -- payment.result --> O[orchestrator]
@@ -60,9 +114,11 @@ flowchart LR
   O -- shipping.requested --> S[shipping-svc]
   S -- shipping.result --> O
   O --> AN[streams-analytics]
+
   classDef svc fill:#0f172a,stroke:#94a3b8,color:#e2e8f0;
   class A,P,O,I,S,AN svc
 
+```
 
 # Metrikák
 
