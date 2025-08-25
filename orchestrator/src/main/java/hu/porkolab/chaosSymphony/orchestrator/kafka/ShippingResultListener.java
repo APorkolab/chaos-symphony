@@ -5,59 +5,52 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import hu.porkolab.chaosSymphony.common.EnvelopeHelper;
 import hu.porkolab.chaosSymphony.common.EventEnvelope;
 import hu.porkolab.chaosSymphony.common.idemp.IdempotencyStore;
+import io.micrometer.core.instrument.Counter;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
-import io.micrometer.core.instrument.Counter;
+import org.springframework.transaction.annotation.Transactional;
+
+@Slf4j
 @Component
+@RequiredArgsConstructor
 public class ShippingResultListener {
 
-	private static final Logger logger = LoggerFactory.getLogger(ShippingResultListener.class);
-	private final Counter ordersSucceeded;
-	private final Counter ordersFailed;
 	private final IdempotencyStore idempotencyStore;
 	private final ObjectMapper om;
+	private final Counter ordersSucceeded;
+	private final Counter ordersFailed;
 
-	public ShippingResultListener(IdempotencyStore idempotencyStore, ObjectMapper om, Counter ordersSucceeded,
-			Counter ordersFailed) {
-		this.idempotencyStore = idempotencyStore;
-		this.om = om;
-		this.ordersSucceeded = ordersSucceeded;
-		this.ordersFailed = ordersFailed;
-	}
-
-	@KafkaListener(topics = "shipping.result", groupId = "orchestrator-1")
+	@KafkaListener(topics = "shipping.result", groupId = "orchestrator-shipping-result")
+	@Transactional
 	public void onResult(ConsumerRecord<String, String> rec) throws Exception {
-		try {
-			EventEnvelope env = EnvelopeHelper.parse(rec.value());
+		if (!idempotencyStore.markIfFirst(rec.key())) {
+			log.warn("Duplicate message detected, skipping: {}", rec.key());
+			return;
+		}
 
-			if (!idempotencyStore.markIfFirst(env.getEventId())) {
-				logger.debug("Skip duplicate eventId={}", env.getEventId());
-				return;
-			}
+		EventEnvelope env = EnvelopeHelper.parse(rec.value());
+		String orderId = env.getOrderId();
+		JsonNode msg = om.readTree(env.getPayload());
+		String status = msg.path("status").asText("");
 
-			String orderId = env.getOrderId();
-			JsonNode msg = om.readTree(env.getPayload());
-			String status = msg.path("status").asText("");
+		log.info("Shipping result received: orderId={}, status={}", orderId, status);
 
-			logger.info("Shipping result received: orderId={}, status={}", orderId, status);
-
-			switch (status) {
-				case "DELIVERED", "SHIPPED" -> logger.debug("Order {} successfully {}", orderId, status.toLowerCase());
-				case "FAILED" -> logger.warn("Shipping FAILED for orderId={}", orderId);
-				default -> logger.warn("Unknown shipping status='{}' for orderId={}", status, orderId);
-			}
-
-			if ("DELIVERED".equalsIgnoreCase(status)) {
+		switch (status) {
+			case "DELIVERED", "SHIPPED" -> {
+				log.debug("Order {} successfully {}", orderId, status.toLowerCase());
 				ordersSucceeded.increment();
-			} else {
+			}
+			case "FAILED" -> {
+				log.warn("Shipping FAILED for orderId={}", orderId);
 				ordersFailed.increment();
 			}
-		} catch (Exception e) {
-			logger.error("ShippingResult processing failed: {}", rec.value(), e);
-			throw e;
+			default -> {
+				log.warn("Unknown shipping status='{}' for orderId={}", status, orderId);
+				ordersFailed.increment();
+			}
 		}
 	}
 }
