@@ -199,4 +199,35 @@ public class DlqController {
 		}
 	}
 
+	@PostMapping("/{topic}/replay-range")
+	public ResponseEntity<String> replayRange(@PathVariable String topic,
+			@RequestParam long fromOffset, @RequestParam long toOffset) throws Exception {
+
+		if (!topic.endsWith(".DLT"))
+			return ResponseEntity.badRequest().body("Not a DLT topic");
+		String original = topic.substring(0, topic.length() - 4);
+		var tp = new org.apache.kafka.common.TopicPartition(topic, 0); // ha több partíció: iteráld végig
+
+		long replayed = 0;
+		try (var c = new KafkaConsumer<String, String>(consumerProps("dlq-range-" + UUID.randomUUID()))) {
+			c.assign(java.util.List.of(tp));
+			c.seek(tp, fromOffset);
+			while (true) {
+				var recs = c.poll(java.time.Duration.ofMillis(600));
+				if (recs.isEmpty())
+					break;
+				for (var r : recs) {
+					if (r.offset() > toOffset)
+						break;
+					var pr = new org.apache.kafka.clients.producer.ProducerRecord<>(original, null, r.timestamp(), r.key(),
+							r.value(), r.headers());
+					template.send(pr).get();
+					replayed++;
+				}
+				if (recs.records(tp).stream().anyMatch(x -> x.offset() > toOffset))
+					break;
+			}
+		}
+		return ResponseEntity.ok("Replayed " + replayed + " records from " + topic + " to " + original);
+	}
 }

@@ -9,6 +9,36 @@
 # Chaos Symphony – Outbox EventRouter
 
 
+README.md (rövid váz):
+
+# Chaos Symphony
+
+## Run
+```bash
+cd deployment && docker compose up -d
+mvn -q -DskipTests install
+mvn -pl orchestrator,payment-svc,inventory-svc,shipping-svc,order-api,streams-analytics,dlq-admin spring-boot:run
+
+
+# start order
+curl -s -X POST "http://localhost:8080/api/orders/start?amount=42"
+# analytics
+curl -s http://localhost:8087/api/metrics/paymentStatus
+# DLQ list
+curl -s http://localhost:8086/api/dlq/topics
+
+
+Break & Recover
+
+    Break: set chaos rules (failRate) at http://localhost:<chaos-svc>/chaos.html
+
+    See DLT in Kafdrop (inventory.requested.DLT)
+
+    Replay:
+
+
+curl -H "X-Admin-Token: secret123" -X POST http://localhost:8086/api/dlq/inventory.requested.DLT/replay
+
 Event-driven demo (Java 21, Spring Boot 3.4, Kafka) – Payment → Inventory → Shipping, orchestration, Chaos injection, DLT replay, Streams analytics.
 
 ## Indítás 3 lépésben

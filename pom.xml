@@ -35,17 +35,38 @@
       </dependencies>
   </dependencyManagement>
   <!-- PluginManagement: opcionális; a Boot plugin a GYERMEK modulokban legyen -->
-  <build>
-    <pluginManagement>
-      <plugins>
-        <plugin>
-          <groupId>org.apache.maven.plugins</groupId>
-          <artifactId>maven-compiler-plugin</artifactId>
-          <configuration>
-            <release>${java.version}</release>
-          </configuration>
-        </plugin>
-      </plugins>
-    </pluginManagement>
-  </build>
+<build>
+  <plugins>
+    <plugin>
+      <groupId>com.diffplug.spotless</groupId>
+      <artifactId>spotless-maven-plugin</artifactId>
+      <version>2.43.0</version>
+      <configuration>
+        <java>
+          <googleJavaFormat/>
+          <removeUnusedImports/>
+        </java>
+      </configuration>
+      <executions>
+        <execution>
+          <goals>
+            <goal>apply</goal>
+          </goals>
+        </execution>
+      </executions>
+    </plugin>
+    <plugin>
+      <groupId>org.owasp</groupId>
+      <artifactId>dependency-check-maven</artifactId>
+      <version>10.0.3</version>
+      <executions>
+        <execution>
+          <goals>
+            <goal>check</goal>
+          </goals>
+        </execution>
+      </executions>
+    </plugin>
+  </plugins>
+</build>
 </project>
