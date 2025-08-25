@@ -22,7 +22,7 @@ public class OrderController {
 	@PostMapping("/start")
 	public ResponseEntity<UUID> createOrder(@RequestParam BigDecimal amount) {
 		// The CreateOrder command object might have more fields in a real app
-		CreateOrder cmd = new CreateOrder(amount, null);
+		CreateOrder cmd = new CreateOrder(amount);
 		UUID orderId = service.createOrder(cmd);
 		return ResponseEntity.accepted().body(orderId);
 	}

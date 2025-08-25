@@ -19,23 +19,23 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @ExtendWith(PactConsumerTestExt.class)
-@PactTestFor(providerName = "PaymentSvc", pactVersion = PactTestFor.PactVersion.V3)
-public class PaymentSvcContractTest {
+@PactTestFor(providerName = "PaymentSvc") 
+class PaymentSvcContractTest {
 
     private static final String ORDER_ID = "61e45529-6e55-4670-9980-5a3637202391";
 
     @Pact(consumer = "Orchestrator")
-    public RequestResponsePact paymentStatusExists(PactDslWithProvider builder) {
+    RequestResponsePact paymentStatusExists(PactDslWithProvider builder) { // JAVÍTVA
         return builder
-            .given("a payment status exists for an order", Map.of("orderId", ORDER_ID))
-            .uponReceiving("a request for payment status")
+                .given("a payment status exists for an order", Map.of("orderId", ORDER_ID))
+                .uponReceiving("a request for payment status")
                 .path("/api/payments/status/" + ORDER_ID)
                 .method("GET")
-            .willRespondWith()
+                .willRespondWith()
                 .status(200)
                 .headers(Map.of("Content-Type", "application/json"))
                 .body("{\"orderId\": \"" + ORDER_ID + "\", \"status\": \"CHARGED\"}")
-            .toPact();
+                .toPact();
     }
 
     @Test

@@ -5,49 +5,33 @@ import hu.porkolab.chaosSymphony.orderapi.api.CreateOrder;
 import hu.porkolab.chaosSymphony.orderapi.domain.Order;
 import hu.porkolab.chaosSymphony.orderapi.domain.OrderRepository;
 import hu.porkolab.chaosSymphony.orderapi.domain.OrderStatus;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
-import java.time.Clock;
-import java.time.Instant;
+import java.math.RoundingMode;
 import java.util.UUID;
 
-@Slf4j
 @Service
 @RequiredArgsConstructor
 public class OrderService {
-	private final OrderRepository orders;
-	private final KafkaTemplate<String, OrderCreated> kafkaTemplate;
-	private final Clock clock;
+	private final OrderRepository repository;
+	private final OutboxEventProducer producer;
 
 	@Transactional
-	public UUID createOrder(CreateOrder cmd) {
-		UUID orderId = UUID.randomUUID();
-		BigDecimal total = cmd.total().setScale(2, BigDecimal.ROUND_HALF_UP);
+	public UUID createOrder(CreateOrder command) {
+		Order order = new Order();
+		order.setId(UUID.randomUUID());
+		order.setStatus(OrderStatus.NEW);
+		order.setTotal(command.amount().setScale(2, RoundingMode.HALF_UP));
+		repository.save(order);
 
-		// 1. Save the order to the database
-		orders.save(Order.builder()
-				.id(orderId)
-				.status(OrderStatus.NEW)
-				.total(total)
-				.createdAt(Instant.now(clock))
-				.build());
+		OrderCreated event = new OrderCreated(
+				order.getId(),
+				order.getTotal(),
+				"HUF");
 
-		// 2. Create the Avro event
-		OrderCreated event = OrderCreated.newBuilder()
-				.setOrderId(orderId.toString())
-				.setTotal(total.doubleValue())
-				.setCurrency("HUF")
-				.build();
-
-		// 3. Send the event directly to Kafka (Note: This breaks the transactional outbox guarantee)
-		kafkaTemplate.send("order.created", orderId.toString(), event);
-
-		log.info("Order {} created and OrderCreated event sent with total {}", orderId, total);
-		return orderId;
+		producer.fire(event);
+		return order.getId();
 	}
 }

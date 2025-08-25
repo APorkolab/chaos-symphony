@@ -2,6 +2,8 @@ package hu.porkolab.chaosSymphony.orchestrator.kafka;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+
 import hu.porkolab.chaosSymphony.common.EnvelopeHelper;
 import hu.porkolab.chaosSymphony.common.EventEnvelope;
 import hu.porkolab.chaosSymphony.common.idemp.IdempotencyStore;
@@ -21,8 +23,7 @@ public class InventoryResultListener {
 	private final IdempotencyStore idempotencyStore;
 	private final ShippingRequestProducer shippingProducer;
 	private final ObjectMapper om;
-	private final Counter ordersSucceeded;
-	private final Counter ordersFailed;
+	private final Counter ordersFailed; // JAVÍTVA: A success counter felesleges itt
 
 	@KafkaListener(topics = "inventory.result", groupId = "orchestrator-inventory-result")
 	@Transactional
@@ -41,13 +42,12 @@ public class InventoryResultListener {
 
 		switch (status) {
 			case "RESERVED" -> {
-				String payload = om.createObjectNode()
+				ObjectNode payload = om.createObjectNode()
 						.put("orderId", orderId)
-						.put("address", "Budapest")
-						.toString();
-				shippingProducer.sendRequest(orderId, payload);
+						.put("address", "Budapest");
+				shippingProducer.sendRequest(orderId, payload.toString());
 				log.debug("Shipping request sent for orderId={}", orderId);
-				ordersSucceeded.increment();
+				// JAVÍTVA: A success számlálót innen kivettük
 			}
 			case "OUT_OF_STOCK" -> {
 				log.warn("Inventory OUT_OF_STOCK for orderId={}", orderId);
