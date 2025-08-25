@@ -20,9 +20,16 @@ public class InventoryRequestedListener {
 
 	@KafkaListener(topics = "inventory.requested", groupId = "inventory-1")
 	public void onInventoryRequested(ConsumerRecord<String, String> rec) {
+		var env = EnvelopeHelper.parse(rec.value());
+		var orderId = env.getOrderId();
+
+		if ("BREAK-ME".equals(orderId)) {
+			throw new RuntimeException("boom-test");
+		}
+		// Simulate processing the inventory request
 		try {
-			EventEnvelope env = EnvelopeHelper.parse(rec.value());
-			String orderId = env.getOrderId();
+		//	EventEnvelope env = EnvelopeHelper.parse(rec.value());
+		//	String orderId = env.getOrderId();
 
 			JsonNode msg = om.readTree(env.getPayload());
 			int items = msg.path("items").asInt(1);

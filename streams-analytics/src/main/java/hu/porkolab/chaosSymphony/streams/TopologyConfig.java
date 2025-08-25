@@ -1,5 +1,7 @@
 package hu.porkolab.chaosSymphony.streams;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.common.utils.Bytes;
 import org.apache.kafka.streams.StreamsBuilder;
@@ -11,6 +13,8 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class TopologyConfig {
+
+	private static final ObjectMapper MAPPER = new ObjectMapper();
 
 	@Bean
 	public Topology topology() {
@@ -24,7 +28,7 @@ public class TopologyConfig {
 				.withValueSerde(Serdes.Long());
 
 		KTable<String, Long> byStatus = payments
-				.mapValues(v -> extract(v, "\"status\":\"", "\""))
+				.mapValues(TopologyConfig::statusFromEnvelope)
 				.groupBy((k, status) -> status, Grouped.with(Serdes.String(), Serdes.String()))
 				.count(mat);
 
@@ -34,12 +38,18 @@ public class TopologyConfig {
 		return b.build();
 	}
 
-	private static String extract(String s, String prefix, String endQuote) {
-		int i = s.indexOf(prefix);
-		if (i < 0)
+	private static String statusFromEnvelope(String json) {
+		try {
+			JsonNode root = MAPPER.readTree(json);
+			JsonNode payloadNode = root.path("payload");
+
+			// a payload lehet TEXT (escape-elt JSON) vagy objektum
+			String payloadStr = payloadNode.isTextual() ? payloadNode.asText() : payloadNode.toString();
+			JsonNode payload = MAPPER.readTree(payloadStr);
+
+			return payload.path("status").asText("UNKNOWN");
+		} catch (Exception e) {
 			return "UNKNOWN";
-		i += prefix.length();
-		int j = s.indexOf(endQuote, i);
-		return j < 0 ? "UNKNOWN" : s.substring(i, j);
+		}
 	}
 }
