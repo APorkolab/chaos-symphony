@@ -6,10 +6,12 @@ scrape_configs:
     metrics_path: /actuator/prometheus
     static_configs:
       - targets:
-          - host.docker.internal:8080
-          - host.docker.internal:8081
-          - host.docker.internal:8084
-          - host.docker.internal:8085
-          - host.docker.internal:8091
-          - host.docker.internal:8089
-          - host.docker.internal:8095
+          - host.docker.internal:8080 # order-api
+          - host.docker.internal:8081 # order-svc
+          - host.docker.internal:8082 # payment-svc 
+          - host.docker.internal:8084 # shipping-svc
+          - host.docker.internal:8085 # chaos-svc
+          - host.docker.internal:8086 # dlq-admin
+          - host.docker.internal:8091 # orchestrator
+          - host.docker.internal:8087 # streams-analytics
+          - host.docker.internal:9983 # inventory-svc
