@@ -1,7 +1,6 @@
 <div class="container mx-auto p-4">
   <h1 class="text-3xl font-bold mb-6">Order Management</h1>
 
-  <!-- Create Order Section -->
   <div class="bg-gray-800 p-4 rounded-lg shadow-md mb-8">
     <h2 class="text-xl font-semibold mb-4">Create New Order</h2>
     <div class="flex items-center space-x-4">
@@ -18,10 +17,8 @@
     </div>
   </div>
 
-  <!-- Orders Display Section -->
   <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
 
-    <!-- Orders List -->
     <div class="md:col-span-2 bg-gray-800 p-4 rounded-lg shadow-md">
       <h2 class="text-xl font-semibold mb-4">All Orders</h2>
       <div class="overflow-x-auto">
@@ -52,14 +49,20 @@
       </div>
     </div>
 
-    <!-- Selected Order Timeline -->
     <div class="bg-gray-800 p-4 rounded-lg shadow-md">
-      <h2 class="text-xl font-semibold mb-4">Order Timeline</h2>
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-xl font-semibold">Order Timeline</h2>
+        <button
+          title="Time-travel replay not implemented"
+          disabled
+          class="bg-gray-600 text-gray-400 font-bold py-2 px-4 rounded-md cursor-not-allowed">
+          Replay
+        </button>
+      </div>
       <div *ngIf="selectedOrderHistory$ | async as selectedOrder; else noOrderSelected">
         <p class="mb-2"><span class="font-bold">ID:</span> <span class="font-mono text-sm">{{ selectedOrder.id }}</span></p>
         <p class="mb-4"><span class="font-bold">Total:</span> {{ selectedOrder.total | number }} HUF</p>
 
-        <!-- Timeline visualization -->
         <div class="relative border-l-2 border-blue-500 ml-3 mt-4">
           <div *ngFor="let event of selectedOrder.history; let i = index" class="mb-8 ml-6">
             <span class="absolute -left-3.5 flex items-center justify-center w-6 h-6 bg-blue-500 rounded-full ring-8 ring-gray-800">
