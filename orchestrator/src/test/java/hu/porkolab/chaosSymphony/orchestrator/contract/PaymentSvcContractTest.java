@@ -15,7 +15,6 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.Map;
-import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -23,18 +22,19 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 @PactTestFor(providerName = "PaymentSvc", pactVersion = PactTestFor.PactVersion.V3)
 public class PaymentSvcContractTest {
 
+    private static final String ORDER_ID = "61e45529-6e55-4670-9980-5a3637202391";
+
     @Pact(consumer = "Orchestrator")
     public RequestResponsePact paymentStatusExists(PactDslWithProvider builder) {
-        String orderId = UUID.randomUUID().toString();
         return builder
-            .given("a payment status exists for an order")
+            .given("a payment status exists for an order", Map.of("orderId", ORDER_ID))
             .uponReceiving("a request for payment status")
-                .path("/api/payments/status/" + orderId)
+                .path("/api/payments/status/" + ORDER_ID)
                 .method("GET")
             .willRespondWith()
                 .status(200)
                 .headers(Map.of("Content-Type", "application/json"))
-                .body("{\"orderId\": \"" + orderId + "\", \"status\": \"CHARGED\"}")
+                .body("{\"orderId\": \"" + ORDER_ID + "\", \"status\": \"CHARGED\"}")
             .toPact();
     }
 
@@ -43,7 +43,7 @@ public class PaymentSvcContractTest {
     void testPaymentStatusExists(MockServer mockServer) throws IOException, InterruptedException {
         HttpClient client = HttpClient.newHttpClient();
         HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(mockServer.getUrl() + "/api/payments/status/" + UUID.randomUUID().toString()))
+                .uri(URI.create(mockServer.getUrl() + "/api/payments/status/" + ORDER_ID))
                 .build();
 
         HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());

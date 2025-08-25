@@ -5,17 +5,15 @@ import au.com.dius.pact.provider.junitsupport.Provider;
 import au.com.dius.pact.provider.junitsupport.State;
 import au.com.dius.pact.provider.junitsupport.loader.PactFolder;
 import au.com.dius.pact.provider.spring.junit5.PactVerificationSpringProvider;
+import hu.porkolab.chaosSymphony.payment.store.PaymentStatusStore;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.TestTemplate;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 
-// Mocking a service that doesn't exist yet, but would be called by the controller
-// For a real implementation, you would mock your actual service layer.
-interface PaymentStatusService {
-    String getStatusByOrderId(String orderId);
-}
+import java.util.Map;
 
 @ExtendWith(SpringExtension.class)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -24,8 +22,8 @@ interface PaymentStatusService {
 @PactFolder("../../../orchestrator/target/pacts")
 public class PactVerificationTest {
 
-    @MockBean
-    private PaymentStatusService paymentStatusService; // Assuming a service layer exists
+    @Autowired
+    private PaymentStatusStore paymentStatusStore;
 
     @TestTemplate
     @ExtendWith(PactVerificationSpringProvider.class)
@@ -33,15 +31,19 @@ public class PactVerificationTest {
         context.verifyInteraction();
     }
 
-    @State("a payment status exists for an order")
-    public void toPaymentStatusExistsState() {
-        // Here you would set up your mock service to return the expected data
-        // For example:
-        // when(paymentStatusService.getStatusByOrderId(anyString())).thenReturn("CHARGED");
+    @BeforeEach
+    void setUp(PactVerificationContext context) {
+        // This is a hook to clear state before each interaction.
+        // It's good practice to ensure tests are isolated.
+        paymentStatusStore.clear();
+    }
 
-        // Since the controller and service don't exist, this state setup is conceptual.
-        // The test will fail until the `/api/payments/status/{orderId}` endpoint is created
-        // in the `payment-svc` and it returns the expected response.
-        System.out.println("Provider state setup for 'a payment status exists for an order'");
+    @State("a payment status exists for an order")
+    public void toPaymentStatusExistsState(Map<String, Object> params) {
+        // This method is called by the Pact framework to set up the provider state.
+        // The 'params' map contains the data passed from the consumer's 'given' clause.
+        String orderId = (String) params.get("orderId");
+        paymentStatusStore.save(orderId, "CHARGED");
+        System.out.println("Provider state setup for 'a payment status exists for an order' with orderId: " + orderId);
     }
 }
