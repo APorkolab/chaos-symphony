@@ -1,0 +1,58 @@
+<div class="container mx-auto p-4">
+  <h1 class="text-3xl font-bold mb-6">SLO Dashboard</h1>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- SLO Burn Rate Card -->
+    <div class="lg:col-span-3 bg-gray-800 p-6 rounded-lg shadow-lg flex items-center justify-center"
+         [ngClass]="(sloBurnRate$ | async)! > 1 ? 'border-2 border-red-500' : 'border-2 border-green-500'">
+      <div>
+        <h2 class="text-xl text-center font-semibold text-gray-400">SLO Burn Rate (1h)</h2>
+        <p class="text-6xl text-center font-bold" [ngClass]="(sloBurnRate$ | async)! > 1 ? 'text-red-500' : 'text-green-500'">
+          {{ (sloBurnRate$ | async) | number:'1.1-2' }}x
+        </p>
+        <p class="text-center text-gray-400 mt-2">A value > 1.0 indicates the error budget is burning too fast.</p>
+      </div>
+    </div>
+
+    <!-- p95 Latency Chart -->
+    <div class="lg:col-span-2 bg-gray-800 p-6 rounded-lg shadow-lg">
+      <h2 class="text-2xl font-semibold mb-4">Order E2E p95 Latency</h2>
+      <div *ngIf="p95LatencyData$ | async as data">
+        <ngx-charts-line-chart
+          [view]="view"
+          [scheme]="colorScheme"
+          [results]="data"
+          [legend]="legend"
+          [xAxis]="true"
+          [yAxis]="true"
+          [showXAxisLabel]="showXAxisLabel"
+          [showYAxisLabel]="showYAxisLabel"
+          [xAxisLabel]="xAxisLabel"
+          [yAxisLabel]="yAxisLabelLatency"
+          [referenceLines]="latencyReferenceLines"
+          [showRefLines]="true"
+          [showRefLabels]="true">
+        </ngx-charts-line-chart>
+      </div>
+    </div>
+
+    <!-- DLQ Count Chart -->
+    <div class="lg:col-span-1 bg-gray-800 p-6 rounded-lg shadow-lg">
+      <h2 class="text-2xl font-semibold mb-4">DLQ Count</h2>
+      <div *ngIf="dlqCountData$ | async as data">
+        <ngx-charts-bar-vertical
+          [view]="[350, 300]"
+          [scheme]="colorScheme"
+          [results]="data[0].series"
+          [xAxis]="true"
+          [yAxis]="true"
+          [showXAxisLabel]="showXAxisLabel"
+          [showYAxisLabel]="showYAxisLabel"
+          [xAxisLabel]="xAxisLabel"
+          [yAxisLabel]="yAxisLabelDlq">
+        </ngx-charts-bar-vertical>
+      </div>
+    </div>
+
+  </div>
+</div>
