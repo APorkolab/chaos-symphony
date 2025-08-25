@@ -1,14 +1,16 @@
 package hu.porkolab.chaosSymphony.dlq.api;
 
 import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.ListTopicsOptions;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.apache.kafka.clients.producer.RecordMetadata;
+import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.serialization.StringDeserializer;
-import org.apache.kafka.common.serialization.StringSerializer;
 import org.springframework.http.ResponseEntity;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.Duration;
@@ -20,81 +22,181 @@ import java.util.stream.Collectors;
 public class DlqController {
 
 	private final KafkaTemplate<String, String> template;
-	private final Properties baseProps;
+	private final String bootstrap;
 
 	public DlqController(KafkaTemplate<String, String> template,
-			org.springframework.kafka.core.ProducerFactory<String, String> pf) {
+			ProducerFactory<String, String> pf) {
 		this.template = template;
-		this.baseProps = new Properties();
-		// bootstrap-servers-t a Spring configból veszi automatikusan a template/pf
-		// Consumerhez külön kell:
-		baseProps.putAll(pf.getConfigurationProperties());
-		baseProps.put(ConsumerConfig.GROUP_ID_CONFIG, "dlq-admin-" + UUID.randomUUID());
-		baseProps.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-		baseProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-		baseProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
-		// producer serializer (replay-hez)
-		baseProps.put("key.serializer", StringSerializer.class.getName());
-		baseProps.put("value.serializer", StringSerializer.class.getName());
+		Object bs = pf.getConfigurationProperties().get(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG);
+
+		// bs lehet Collection, String vagy bármi -> normalizáljuk
+		String raw = (bs == null) ? "" : bs.toString();
+		// ha listaként jön: "[127.0.0.1:29092]" -> "127.0.0.1:29092"
+		if (raw.startsWith("[") && raw.endsWith("]")) {
+			raw = raw.substring(1, raw.length() - 1);
+		}
+		// szóközök kidobása
+		raw = raw.replaceAll("\\s+", "");
+		// végső fallback
+		this.bootstrap = raw.isBlank() ? "127.0.0.1:29092" : raw;
 	}
+
+	/* ---------- helpers ---------- */
+
+	private Properties consumerProps(String groupId) {
+		Properties p = new Properties();
+		p.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrap);
+		p.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
+		p.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+		p.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+		p.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+		p.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");
+		p.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, "500");
+		return p;
+	}
+
+	private void seekBeginning(KafkaConsumer<String, String> c, String topic) {
+		c.subscribe(Collections.singletonList(topic));
+		c.poll(Duration.ofMillis(0)); // trigger assignment
+		c.seekToBeginning(c.assignment()); // start from earliest
+	}
+
+	/* ---------- endpoints ---------- */
 
 	@GetMapping("/topics")
 	public List<String> listDlqTopics() throws Exception {
-		try (var admin = AdminClient.create(baseProps)) {
-			var names = admin.listTopics(new ListTopicsOptions().listInternal(false))
-					.names().get();
-			return names.stream()
-					.filter(n -> n.endsWith(".DLT"))
-					.sorted()
-					.collect(Collectors.toList());
+		Properties adminProps = new Properties();
+		adminProps.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrap);
+		try (var admin = AdminClient.create(adminProps)) {
+			var names = admin.listTopics(new ListTopicsOptions().listInternal(false)).names().get();
+			return names.stream().filter(n -> n.endsWith(".DLT")).sorted().collect(Collectors.toList());
 		}
 	}
 
 	@PostMapping("/{topic}/replay")
-	public ResponseEntity<String> replay(@PathVariable String topic) {
-		if (!topic.endsWith(".DLT"))
+	public ResponseEntity<String> replay(@PathVariable("topic") String dltTopic) throws Exception {
+		if (!dltTopic.endsWith(".DLT")) {
 			return ResponseEntity.badRequest().body("Not a DLT topic");
-		String original = topic.substring(0, topic.length() - 4); // remove ".DLT"
+		}
+		String original = dltTopic.substring(0, dltTopic.length() - 4);
 
-		var consumerProps = new Properties();
-		consumerProps.putAll(baseProps);
-		try (var consumer = new KafkaConsumer<String, String>(consumerProps)) {
-			consumer.subscribe(Collections.singletonList(topic));
-			long replayed = 0;
+		// Partíciók lekérése adminból
+		Properties adminProps = new Properties();
+		adminProps.put(org.apache.kafka.clients.admin.AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrap);
+		var tps = new ArrayList<org.apache.kafka.common.TopicPartition>();
+		try (var admin = org.apache.kafka.clients.admin.AdminClient.create(adminProps)) {
+			var info = admin.describeTopics(Collections.singletonList(dltTopic)).all().get().get(dltTopic);
+			if (info == null) {
+				return ResponseEntity.ok("Replayed 0 records from " + dltTopic + " to " + original);
+			}
+			info.partitions().forEach(p -> tps.add(new org.apache.kafka.common.TopicPartition(dltTopic, p.partition())));
+		}
+
+		long replayed = 0;
+		String gid = "dlq-replay-" + java.util.UUID.randomUUID();
+
+		try (var consumer = new org.apache.kafka.clients.consumer.KafkaConsumer<String, String>(consumerProps(gid))) {
+			// Kötelező: assign + seekToBeginning -> garantáltan a legelejéről olvasunk
+			consumer.assign(tps);
+			consumer.seekToBeginning(tps);
+
 			while (true) {
-				var records = consumer.poll(Duration.ofMillis(300));
-				if (records.isEmpty())
+				var recs = consumer.poll(java.time.Duration.ofMillis(600));
+				if (recs.isEmpty())
 					break;
-				for (var rec : records) {
+
+				for (var rec : recs) {
+					// őrizd meg a key-t, timestampet, headereket
+					var pr = new org.apache.kafka.clients.producer.ProducerRecord<>(
+							original, null, rec.timestamp(), rec.key(), rec.value(), rec.headers());
 					try {
-						RecordMetadata md = template.send(original, rec.key(), rec.value())
-								.get().getRecordMetadata();
+						template.send(pr).get();
 						replayed++;
 					} catch (Exception e) {
-						// ha a replay során hiba van, megy tovább
+						// ha egy rekord küldése hibázik, nem állunk meg
 					}
 				}
 			}
-			return ResponseEntity.ok("Replayed " + replayed + " records from " + topic + " to " + original);
 		}
+
+		return ResponseEntity.ok("Replayed " + replayed + " records from " + dltTopic + " to " + original);
 	}
 
 	@DeleteMapping("/{topic}")
-	public ResponseEntity<String> purge(@PathVariable String topic) {
-		// egyszerű purge: új consumer group-pal végigolvas és eldobja
-		var consumerProps = new Properties();
-		consumerProps.putAll(baseProps);
-		consumerProps.put(ConsumerConfig.GROUP_ID_CONFIG, "dlq-purge-" + UUID.randomUUID());
-		try (var consumer = new KafkaConsumer<String, String>(consumerProps)) {
-			consumer.subscribe(Collections.singletonList(topic));
-			long purged = 0;
+	public ResponseEntity<String> purge(@PathVariable("topic") String topic) {
+		long purged = 0;
+		String gid = "dlq-purge-" + UUID.randomUUID();
+		try (var c = new KafkaConsumer<String, String>(consumerProps(gid))) {
+			seekBeginning(c, topic);
 			while (true) {
-				var records = consumer.poll(Duration.ofMillis(300));
-				if (records.isEmpty())
+				var recs = c.poll(Duration.ofSeconds(1));
+				if (recs.isEmpty())
 					break;
-				purged += records.count();
+				purged += recs.count();
 			}
-			return ResponseEntity.ok("Purged " + purged + " records from " + topic);
+		}
+		return ResponseEntity.ok("Purged " + purged + " records from " + topic);
+	}
+
+	@GetMapping("/{topic}/count")
+	public long count(@PathVariable String topic) throws Exception {
+		Properties adminProps = new Properties();
+		adminProps.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrap);
+		try (var admin = AdminClient.create(adminProps)) {
+			var desc = admin.describeTopics(Collections.singletonList(topic)).all().get();
+			var info = desc.get(topic);
+			if (info == null)
+				return 0;
+
+			var tps = info.partitions().stream()
+					.map(p -> new org.apache.kafka.common.TopicPartition(topic, p.partition()))
+					.toList();
+
+			long n = 0;
+			try (var c = new KafkaConsumer<String, String>(consumerProps("dlq-count-" + UUID.randomUUID()))) {
+				c.assign(tps);
+				c.seekToBeginning(tps);
+				while (true) {
+					var recs = c.poll(Duration.ofMillis(400));
+					if (recs.isEmpty())
+						break;
+					n += recs.count();
+				}
+			}
+			return n;
 		}
 	}
+
+	@GetMapping("/{topic}/peek")
+	public List<String> peek(@PathVariable String topic, @RequestParam(defaultValue = "10") int n) throws Exception {
+		Properties adminProps = new Properties();
+		adminProps.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrap);
+		try (var admin = AdminClient.create(adminProps)) {
+			var desc = admin.describeTopics(Collections.singletonList(topic)).all().get();
+			var info = desc.get(topic);
+			if (info == null)
+				return List.of();
+
+			var tps = info.partitions().stream()
+					.map(p -> new org.apache.kafka.common.TopicPartition(topic, p.partition()))
+					.toList();
+
+			var out = new ArrayList<String>(n);
+			try (var c = new KafkaConsumer<String, String>(consumerProps("dlq-peek-" + UUID.randomUUID()))) {
+				c.assign(tps);
+				c.seekToBeginning(tps);
+				while (out.size() < n) {
+					var recs = c.poll(Duration.ofMillis(400));
+					if (recs.isEmpty())
+						break;
+					recs.forEach(r -> {
+						if (out.size() < n)
+							out.add(String.valueOf(r.value()));
+					});
+				}
+			}
+			return out;
+		}
+	}
+
 }

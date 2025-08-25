@@ -32,8 +32,9 @@ management:
 logging:
   level:
     root: INFO
-    org.springframework.kafka: INFO
+    org.springframework.kafka: DEBUG
     hu.porkolab.chaosSymphony: DEBUG
+    org.springframework.kafka.listener: DEBUG
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] %logger{36} - %msg%n"
 chaos:

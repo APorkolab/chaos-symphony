@@ -1,13 +1,17 @@
 package hu.porkolab.chaosSymphony.inventory.kafka;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import hu.porkolab.chaosSymphony.common.EventEnvelope;
-import hu.porkolab.chaosSymphony.common.EnvelopeHelper;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import hu.porkolab.chaosSymphony.common.EnvelopeHelper;
+import hu.porkolab.chaosSymphony.common.EventEnvelope;
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 @Component
 public class InventoryRequestedListener {
 
@@ -19,17 +23,10 @@ public class InventoryRequestedListener {
 	}
 
 	@KafkaListener(topics = "inventory.requested", groupId = "inventory-1")
-	public void onInventoryRequested(ConsumerRecord<String, String> rec) {
-		var env = EnvelopeHelper.parse(rec.value());
-		var orderId = env.getOrderId();
-
-		if ("BREAK-ME".equals(orderId)) {
-			throw new RuntimeException("boom-test");
-		}
-		// Simulate processing the inventory request
+	public void onInventoryRequested(ConsumerRecord<String, String> rec) throws Exception {
 		try {
-		//	EventEnvelope env = EnvelopeHelper.parse(rec.value());
-		//	String orderId = env.getOrderId();
+			EventEnvelope env = EnvelopeHelper.parse(rec.value());
+			String orderId = env.getOrderId();
 
 			JsonNode msg = om.readTree(env.getPayload());
 			int items = msg.path("items").asInt(1);
@@ -45,7 +42,8 @@ public class InventoryRequestedListener {
 			producer.sendResult(orderId, resultPayload);
 
 		} catch (Exception e) {
-			e.printStackTrace();
+			log.error("InventoryRequested failed: {}", rec.value(), e);
+			throw e; 
 		}
 	}
 }

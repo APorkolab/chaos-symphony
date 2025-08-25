@@ -1,44 +1,79 @@
 package hu.porkolab.chaosSymphony.common.kafka;
 
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.serialization.StringDeserializer;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
-import org.springframework.kafka.core.ConsumerFactory;
-import org.springframework.kafka.core.KafkaTemplate;
-import org.springframework.kafka.listener.ContainerProperties;
-import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
+import org.springframework.kafka.core.*;
 import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.kafka.support.ExponentialBackOffWithMaxRetries;
+import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
+import java.util.HashMap;
+import java.util.Map;
 
 @Configuration
 public class KafkaErrorHandlingConfig {
 
+    @Value("${spring.kafka.bootstrap-servers}")
+    private String bootstrap;
+
     @Bean
-    public DeadLetterPublishingRecoverer deadLetterPublishingRecoverer(KafkaTemplate<Object, Object> template) {
-        return new DeadLetterPublishingRecoverer(template, (record, ex) ->
-            new TopicPartition(record.topic() + ".DLT", record.partition()));
+    public ConsumerFactory<String, String> consumerFactory() {
+        Map<String, Object> props = new HashMap<>();
+        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrap);
+        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+        props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
+        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+        return new DefaultKafkaConsumerFactory<>(props);
     }
 
     @Bean
-    public DefaultErrorHandler defaultErrorHandler(DeadLetterPublishingRecoverer recoverer) {
-        ExponentialBackOffWithMaxRetries backoff = new ExponentialBackOffWithMaxRetries(5);
-        backoff.setInitialInterval(1000L);
-        backoff.setMultiplier(2.0);
-        backoff.setMaxInterval(15000L);
-        return new DefaultErrorHandler(recoverer, backoff);
+    public DeadLetterPublishingRecoverer deadLetterPublishingRecoverer(KafkaTemplate<String, String> tpl) {
+        return new DeadLetterPublishingRecoverer(tpl,
+                (rec, ex) -> new TopicPartition(rec.topic() + ".DLT", rec.partition()));
     }
 
-    @Bean
-    public ConcurrentKafkaListenerContainerFactory<Object, Object> kafkaListenerContainerFactory(
-            ConsumerFactory<Object, Object> consumerFactory,
-            DefaultErrorHandler defaultErrorHandler) {
+@Bean
+public DefaultErrorHandler errorHandler(DeadLetterPublishingRecoverer dlpr) {
+    var backoff = new ExponentialBackOffWithMaxRetries(3);
+    backoff.setInitialInterval(200);
+    backoff.setMultiplier(2.0);
+    backoff.setMaxInterval(2000);
 
-        ConcurrentKafkaListenerContainerFactory<Object, Object> factory =
-                new ConcurrentKafkaListenerContainerFactory<>();
-        factory.setConsumerFactory(consumerFactory);
-        factory.setCommonErrorHandler(defaultErrorHandler);
-        factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.BATCH);
-        return factory;
-    }
+    var handler = new DefaultErrorHandler(dlpr, backoff);
+    handler.setCommitRecovered(true);
+
+    // (opcionális) jobb napló
+    handler.setRetryListeners((rec, ex, attempt) -> {
+        org.slf4j.LoggerFactory.getLogger(DefaultErrorHandler.class)
+            .warn("[DLT] retry #{} topic={} offset={} key={} cause={}",
+                attempt, rec.topic(), rec.offset(), rec.key(), ex.toString());
+    });
+
+    return handler;
+}
+
+@Bean(name = "kafkaListenerContainerFactory")
+public ConcurrentKafkaListenerContainerFactory<String, String> kafkaListenerContainerFactory(
+        ConsumerFactory<String, String> cf,
+        DefaultErrorHandler errorHandler) {
+
+    var factory = new ConcurrentKafkaListenerContainerFactory<String, String>();
+    factory.setConsumerFactory(cf);
+    factory.setCommonErrorHandler(errorHandler);
+
+    // 🔑 Rekordonkénti ack – ehhez igazodik a commitRecovered viselkedés is
+    factory.getContainerProperties()
+           .setAckMode(org.springframework.kafka.listener.ContainerProperties.AckMode.RECORD);
+
+    // (opcionális) single-thread feldolgozás teszthez
+    // factory.setConcurrency(1);
+
+    return factory;
+}
+
 }
