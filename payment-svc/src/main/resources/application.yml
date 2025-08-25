@@ -37,3 +37,6 @@ logging:
     hu.porkolab.chaosSymphony: DEBUG
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] %logger{36} - %msg%n"
+chaos:
+  refresh-ms: 5000
+

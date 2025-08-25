@@ -1,11 +1,16 @@
 package hu.porkolab.chaosSymphony.streams.api;
 
-import org.apache.kafka.common.serialization.Serdes;
-import org.apache.kafka.streams.state.*;
-import org.springframework.web.bind.annotation.*;
-import org.apache.kafka.streams.state.StoreQueryParameters;
+import org.apache.kafka.streams.KafkaStreams;
+import org.apache.kafka.streams.StoreQueryParameters;
+import org.apache.kafka.streams.state.KeyValueIterator;
+import org.apache.kafka.streams.state.QueryableStoreTypes;
+import org.apache.kafka.streams.state.ReadOnlyKeyValueStore;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-import java.util.*;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/metrics")
@@ -13,9 +18,9 @@ public class MetricsController {
 
 	private final ReadOnlyKeyValueStore<String, Long> store;
 
-	public MetricsController(org.apache.kafka.streams.KafkaStreams streams) {
-		this.store = streams.store(StoreQueryParameters.fromNameAndType(
-				"counts-store", QueryableStoreTypes.keyValueStore()));
+	public MetricsController(KafkaStreams streams) {
+		this.store = streams.store(
+				StoreQueryParameters.fromNameAndType("counts-store", QueryableStoreTypes.keyValueStore()));
 	}
 
 	@GetMapping("/paymentStatus")

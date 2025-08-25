@@ -1,4 +1,4 @@
-package hu.porkolab.chaosSymphony.chaos.api;
+package hu.porkolab.chaosSymphony.common.chaos.api;
 
 import hu.porkolab.chaosSymphony.common.chaos.ChaosRules;
 import org.springframework.web.bind.annotation.*;
