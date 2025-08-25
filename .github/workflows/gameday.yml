@@ -1,0 +1,75 @@
+name: '🎲 Automated GameDay'
+
+on:
+  workflow_dispatch:
+    inputs:
+      smoke_test_duration:
+        description: 'Smoke test duration (e.g., 60s)'
+        required: true
+        default: '60s'
+      chaos_probability:
+        description: 'Probability of chaos (0.0 to 1.0)'
+        required: true
+        default: '0.3'
+
+jobs:
+  run-gameday:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 'Step 0: Checkout code'
+        uses: actions/checkout@v4
+
+      - name: 'Step 1: Smoke Test (Normal Load)'
+        run: |
+          echo "Running smoke test for ${{ github.event.inputs.smoke_test_duration }}..."
+          # In a real scenario, use a proper load testing tool like Locust or JMeter.
+          # This is a simple placeholder using curl in a loop.
+          timeout ${{ github.event.inputs.smoke_test_duration }} bash -c 'while true; do curl -s -X POST "http://localhost:8080/api/orders/start?amount=100"; sleep 0.5; done' || true
+          echo "Smoke test finished."
+
+      - name: 'Step 2: Chaos ON'
+        id: chaos_on
+        run: |
+          echo "Injecting DELAY chaos with probability ${{ github.event.inputs.chaos_probability }}..."
+          RULE_ID=$(curl -s -X POST -H "Content-Type: application/json" \
+            --data '{"targetTopic": "all", "types": ["DELAY"], "p": ${{ github.event.inputs.chaos_probability }}, "delayMs": 1500}' \
+            http://localhost:8088/api/chaos/rules | jq -r .id)
+          echo "Created chaos rule with ID: $RULE_ID"
+          echo "::set-output name=rule_id::$RULE_ID"
+
+      - name: 'Step 3: Measure Impact'
+        run: |
+          echo "Waiting for 60 seconds to measure impact..."
+          sleep 60
+          echo "Measuring impact (e.g., call Grafana API, check Prometheus)..."
+          # Example: curl -s "http://localhost:9090/api/v1/query?query=histogram_quantile(0.95, sum(rate(processing_time_ms_bucket[5m])))"
+
+      - name: 'Step 4: Auto-Heal'
+        run: |
+          echo "Attempting auto-healing..."
+          echo "Scaling consumers (placeholder)..."
+          echo "Retrying DLQ batch (placeholder)..."
+
+      - name: 'Step 5: Chaos OFF & Final Measurement'
+        run: |
+          echo "Turning chaos OFF..."
+          RULE_ID=${{ steps.chaos_on.outputs.rule_id }}
+          curl -s -X DELETE "http://localhost:8088/api/chaos/rules/$RULE_ID"
+          echo "Deleted chaos rule $RULE_ID."
+          echo "Waiting for 30 seconds for system to stabilize..."
+          sleep 30
+          echo "Taking final measurement..."
+
+      - name: 'Step 6: Generate Report'
+        run: |
+          echo "Generating GameDay report..."
+          echo "## GameDay Report - $(date)" > gameday-report.md
+          echo "**Chaos Probability:** ${{ github.event.inputs.chaos_probability }}" >> gameday-report.md
+          echo "A chaos experiment was run successfully." >> gameday-report.md
+          echo "(In a real workflow, this would contain Grafana snapshots and Prometheus query results.)" >> gameday-report.md
+
+      - name: 'Upload Report Artifact'
+        uses: actions/upload-artifact@v3
+        with:
+          name: gameday-report
+          path: gameday-report.md

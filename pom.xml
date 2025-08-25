@@ -13,7 +13,17 @@
   <name>chaos-symphony</name>
   <properties>
     <java.version>21</java.version>
+    <avro.version>1.11.3</avro.version>
+    <confluent.version>7.6.1</confluent.version>
   </properties>
+
+  <repositories>
+    <repository>
+      <id>confluent</id>
+      <url>https://packages.confluent.io/maven/</url>
+    </repository>
+  </repositories>
+
   <modules>
     <module>order-api</module>
     <module>orchestrator</module>
@@ -35,10 +45,42 @@
       <type>pom</type>
       <scope>import</scope>
     </dependency>
+    <dependency>
+      <groupId>org.apache.avro</groupId>
+      <artifactId>avro</artifactId>
+      <version>${avro.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.confluent</groupId>
+      <artifactId>kafka-avro-serializer</artifactId>
+      <version>${confluent.version}</version>
+    </dependency>
   </dependencies>
   </dependencyManagement>
-  <!-- PluginManagement: opcionális; a Boot plugin a GYERMEK modulokban legyen -->
+
 <build>
+  <pluginManagement>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.avro</groupId>
+        <artifactId>avro-maven-plugin</artifactId>
+        <version>${avro.version}</version>
+        <executions>
+          <execution>
+            <phase>generate-sources</phase>
+            <goals>
+              <goal>schema</goal>
+            </goals>
+            <configuration>
+              <sourceDirectory>${project.basedir}/src/main/avro/</sourceDirectory>
+              <outputDirectory>${project.build.directory}/generated-sources/avro</outputDirectory>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </pluginManagement>
+
   <plugins>
     <plugin>
       <groupId>com.diffplug.spotless</groupId>

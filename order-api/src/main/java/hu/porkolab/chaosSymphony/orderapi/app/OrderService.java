@@ -1,17 +1,19 @@
 package hu.porkolab.chaosSymphony.orderapi.app;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import hu.porkolab.chaosSymphony.events.OrderCreated;
 import hu.porkolab.chaosSymphony.orderapi.api.CreateOrder;
-import hu.porkolab.chaosSymphony.orderapi.domain.*;
+import hu.porkolab.chaosSymphony.orderapi.domain.Order;
+import hu.porkolab.chaosSymphony.orderapi.domain.OrderRepository;
+import hu.porkolab.chaosSymphony.orderapi.domain.OrderStatus;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
-import java.util.Map;
 import java.util.UUID;
 
 @Slf4j
@@ -19,16 +21,15 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class OrderService {
 	private final OrderRepository orders;
-	private final OrderOutboxRepository outbox;
-	private final ObjectMapper om; // beanből
-	private final Clock clock; // beanből (UTC)
+	private final KafkaTemplate<String, OrderCreated> kafkaTemplate;
+	private final Clock clock;
 
 	@Transactional
 	public UUID createOrder(CreateOrder cmd) {
 		UUID orderId = UUID.randomUUID();
-
 		BigDecimal total = cmd.total().setScale(2, BigDecimal.ROUND_HALF_UP);
 
+		// 1. Save the order to the database
 		orders.save(Order.builder()
 				.id(orderId)
 				.status(OrderStatus.NEW)
@@ -36,32 +37,17 @@ public class OrderService {
 				.createdAt(Instant.now(clock))
 				.build());
 
-		writeOutbox(orderId, "OrderCreated", Map.of(
-				"orderId", orderId.toString(),
-				"total", total,
-				"currency", "HUF"));
+		// 2. Create the Avro event
+		OrderCreated event = OrderCreated.newBuilder()
+				.setOrderId(orderId.toString())
+				.setTotal(total.doubleValue())
+				.setCurrency("HUF")
+				.build();
 
-		log.info("Order {} created with total {}", orderId, total);
+		// 3. Send the event directly to Kafka (Note: This breaks the transactional outbox guarantee)
+		kafkaTemplate.send("order.created", orderId.toString(), event);
+
+		log.info("Order {} created and OrderCreated event sent with total {}", orderId, total);
 		return orderId;
-	}
-
-	private void writeOutbox(UUID aggregateId, String type, Object payloadObj) {
-		String payload = toJson(payloadObj);
-		outbox.save(OrderOutbox.builder()
-				.id(UUID.randomUUID())
-				.aggregateId(aggregateId)
-				.type(type)
-				.payload(payload)
-				.occurredAt(Instant.now(clock))
-				.published(false)
-				.build());
-	}
-
-	private String toJson(Object o) {
-		try {
-			return om.writeValueAsString(o);
-		} catch (Exception e) {
-			throw new IllegalStateException("JSON serialize failed", e);
-		}
 	}
 }

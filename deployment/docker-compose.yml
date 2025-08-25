@@ -1,5 +1,44 @@
 version: "3.9"
+
+volumes:
+  postgres-data:
+  otel-agent:
+
+networks:
+  chaos-net:
+    driver: bridge
+
 services:
+  # Base service to download the OTel agent once
+  otel-agent-downloader:
+    image: curlimages/curl
+    volumes:
+      - otel-agent:/otel
+    command: >
+      sh -c "
+        if [ ! -f /otel/opentelemetry-javaagent.jar ]; then
+          echo 'Downloading OpenTelemetry Java agent...'
+          curl -L -o /otel/opentelemetry-javaagent.jar https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/latest/download/opentelemetry-javaagent.jar;
+        else
+          echo 'OpenTelemetry Java agent already exists.';
+        fi
+      "
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: "orders"
+      POSTGRES_USER: "app"
+      POSTGRES_PASSWORD: "app"
+    ports: ["5432:5432"]
+    volumes: ["postgres-data:/var/lib/postgresql/data"]
+    networks: [chaos-net]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d orders"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   zookeeper:
     image: confluentinc/cp-zookeeper:7.6.1
     environment: { ZOOKEEPER_CLIENT_PORT: 2181 }
@@ -8,8 +47,7 @@ services:
   kafka:
     image: confluentinc/cp-kafka:7.6.1
     depends_on: [zookeeper]
-    ports:
-      - "29092:29092"
+    ports: ["29092:29092"]
     environment:
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
@@ -19,9 +57,23 @@ services:
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
     networks: [chaos-net]
 
+  schema-registry:
+    image: confluentinc/cp-schema-registry:7.6.1
+    depends_on: [kafka]
+    ports: ["8081:8081"]
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: 'kafka:9092'
+      SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
+    networks: [chaos-net]
+
   connect:
     image: debezium/connect:2.6
-    depends_on: [kafka]
+    depends_on:
+      kafka:
+        condition: service_started
+      postgres:
+        condition: service_healthy
     ports: ["8083:8083"]
     environment:
       BOOTSTRAP_SERVERS: kafka:9092
@@ -35,12 +87,117 @@ services:
       VALUE_CONVERTER_SCHEMAS_ENABLE: "false"
     networks: [chaos-net]
 
+  order-api:
+    build: { context: ../order-api }
+    depends_on: { kafka: { condition: service_started }, postgres: { condition: service_healthy }, otel-agent-downloader: { condition: service_completed_successfully } }
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - OTEL_SERVICE_NAME=order-api
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
+      - JAVA_TOOL_OPTIONS=-javaagent:/otel/opentelemetry-javaagent.jar
+    volumes: [otel-agent:/otel]
+    ports: ["8080:8080"]
+    networks: [chaos-net]
+
+  orchestrator:
+    build: { context: ../orchestrator }
+    depends_on: { kafka: { condition: service_started }, postgres: { condition: service_healthy }, otel-agent-downloader: { condition: service_completed_successfully } }
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - OTEL_SERVICE_NAME=orchestrator
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
+      - JAVA_TOOL_OPTIONS=-javaagent:/otel/opentelemetry-javaagent.jar
+    volumes: [otel-agent:/otel]
+    ports: ["8091:8091"]
+    networks: [chaos-net]
+
+  payment-svc:
+    build: { context: ../payment-svc }
+    depends_on: { kafka: { condition: service_started }, postgres: { condition: service_healthy }, otel-agent-downloader: { condition: service_completed_successfully } }
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - OTEL_SERVICE_NAME=payment-svc
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
+      - JAVA_TOOL_OPTIONS=-javaagent:/otel/opentelemetry-javaagent.jar
+    volumes: [otel-agent:/otel]
+    ports: ["8081:8081"]
+    networks: [chaos-net]
+
+  inventory-svc:
+    build: { context: ../inventory-svc }
+    depends_on: { kafka: { condition: service_started }, postgres: { condition: service_healthy }, otel-agent-downloader: { condition: service_completed_successfully } }
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - OTEL_SERVICE_NAME=inventory-svc
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
+      - JAVA_TOOL_OPTIONS=-javaagent:/otel/opentelemetry-javaagent.jar
+    volumes: [otel-agent:/otel]
+    ports: ["8084:8084"]
+    networks: [chaos-net]
+
+  shipping-svc:
+    build: { context: ../shipping-svc }
+    depends_on: { kafka: { condition: service_started }, postgres: { condition: service_healthy }, otel-agent-downloader: { condition: service_completed_successfully } }
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - OTEL_SERVICE_NAME=shipping-svc
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
+      - JAVA_TOOL_OPTIONS=-javaagent:/otel/opentelemetry-javaagent.jar
+    volumes: [otel-agent:/otel]
+    ports: ["8085:8085"]
+    networks: [chaos-net]
+
+  streams-analytics:
+    build: { context: ../streams-analytics }
+    depends_on: { kafka: { condition: service_started }, otel-agent-downloader: { condition: service_completed_successfully } }
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - OTEL_SERVICE_NAME=streams-analytics
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
+      - JAVA_TOOL_OPTIONS=-javaagent:/otel/opentelemetry-javaagent.jar
+    volumes: [otel-agent:/otel]
+    ports: ["8095:8095"]
+    networks: [chaos-net]
+
+  dlq-admin:
+    build: { context: ../dlq-admin }
+    depends_on: { kafka: { condition: service_started }, otel-agent-downloader: { condition: service_completed_successfully } }
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - OTEL_SERVICE_NAME=dlq-admin
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
+      - JAVA_TOOL_OPTIONS=-javaagent:/otel/opentelemetry-javaagent.jar
+    volumes: [otel-agent:/otel]
+    ports: ["8089:8089"]
+    networks: [chaos-net]
+
+  chaos-svc:
+    build: { context: ../chaos-svc }
+    depends_on: { kafka: { condition: service_started }, otel-agent-downloader: { condition: service_completed_successfully } }
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - OTEL_SERVICE_NAME=chaos-svc
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
+      - JAVA_TOOL_OPTIONS=-javaagent:/otel/opentelemetry-javaagent.jar
+    volumes: [otel-agent:/otel]
+    ports: ["8088:8088"]
+    networks: [chaos-net]
+
   kafdrop:
     image: obsidiandynamics/kafdrop:latest
     depends_on: [kafka]
     ports: ["9000:9000"]
     environment:
       KAFKA_BROKERCONNECT: "kafka:9092"
+    networks: [chaos-net]
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.90.1
+    command: ["--config=/etc/otel-collector-config.yml"]
+    volumes: ["./otel-collector-config.yml:/etc/otel-collector-config.yml"]
+    ports:
+      - "4317:4317" # OTLP gRPC
+      - "4318:4318" # OTLP HTTP
     networks: [chaos-net]
 
   prometheus:
@@ -56,8 +213,3 @@ services:
       - GF_SECURITY_ADMIN_PASSWORD=admin
     ports: ["${GRAFANA_PORT:-3000}:3000"]
     networks: [chaos-net]
-
-
-networks:
-  chaos-net:
-    driver: bridge
