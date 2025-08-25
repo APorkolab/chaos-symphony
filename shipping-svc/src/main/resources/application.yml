@@ -26,6 +26,9 @@ spring:
       client.dns.lookup: use_all_dns_ips
 
 management:
+  metrics:
+    tags:
+      app: ${spring.application.name}
   endpoints:
     web:
       exposure:

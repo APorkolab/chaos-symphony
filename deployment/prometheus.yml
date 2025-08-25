@@ -14,3 +14,29 @@ scrape_configs:
           - host.docker.internal:8091 # orchestrator
           - host.docker.internal:8087 # streams-analytics
           - host.docker.internal:9983 # inventory-svc
+        scrape_configs:
+          - job_name: 'orchestrator'
+            metrics_path: '/actuator/prometheus'
+            static_configs:
+              - targets: ['host.docker.internal:8091']   # orchestrator portja
+
+          - job_name: 'order-api'
+            metrics_path: '/actuator/prometheus'
+            static_configs:
+              - targets: ['host.docker.internal:8080']   # order-api portja
+
+          - job_name: 'payment-svc'
+            metrics_path: '/actuator/prometheus'
+            static_configs:
+              - targets: ['host.docker.internal:8082']   # payment-svc
+
+          - job_name: 'inventory-svc'
+            metrics_path: '/actuator/prometheus'
+            static_configs:
+              - targets: ['host.docker.internal:9983']   # inventory-svc
+
+          - job_name: 'shipping-svc'
+            metrics_path: '/actuator/prometheus'
+            static_configs:
+              - targets: ['host.docker.internal:8084']   # shipping-svc
+

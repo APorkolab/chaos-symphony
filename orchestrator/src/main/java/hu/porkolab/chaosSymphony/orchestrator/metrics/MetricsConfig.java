@@ -7,18 +7,25 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class MetricsConfig {
+
 	@Bean
-	public Counter ordersStarted(MeterRegistry reg) {
-		return Counter.builder("orders.started").register(reg);
+	public Counter ordersStarted(MeterRegistry registry) {
+		return Counter.builder("orders.started")
+				.description("Number of orders started")
+				.register(registry);
 	}
 
 	@Bean
-	public Counter ordersSucceeded(MeterRegistry reg) {
-		return Counter.builder("orders.succeeded").register(reg);
+	public Counter ordersSucceeded(MeterRegistry registry) {
+		return Counter.builder("orders.succeeded")
+				.description("Number of orders succeeded")
+				.register(registry);
 	}
 
 	@Bean
-	public Counter ordersFailed(MeterRegistry reg) {
-		return Counter.builder("orders.failed").register(reg);
+	public Counter ordersFailed(MeterRegistry registry) {
+		return Counter.builder("orders.failed")
+				.description("Number of orders failed")
+				.register(registry);
 	}
 }

@@ -64,6 +64,14 @@ flowchart LR
   class A,P,O,I,S,AN svc
 
 
+# Metrikák
+
+Grafana – import
+
+Grafana → Connections → Data sources → add Prometheus (URL pl. http://localhost:9090).
+
+Grafana → Dashboards → New → Import → Paste JSON (lásd lent) → válaszd ki a Prometheus data source-ot → Import.
+
 # Postman collection
 
 Deploy könyvtárban megtalálható a Postman kollekció és environment fájl:

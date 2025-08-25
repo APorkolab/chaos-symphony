@@ -36,6 +36,9 @@ spring:
 
 management:
   endpoints.web.exposure.include: health,info,prometheus
+  metrics:
+    tags:
+      app: ${spring.application.name}
 logging:
   level:
     root: INFO

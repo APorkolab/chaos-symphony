@@ -2,6 +2,8 @@ package hu.porkolab.chaosSymphony.orderapi.api;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import hu.porkolab.chaosSymphony.orderapi.kafka.PaymentRequestProducer;
+import io.micrometer.core.instrument.Counter;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -10,18 +12,20 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/orders")
 public class OrderController {
-
+	private final Counter ordersStarted;
 	private final PaymentRequestProducer producer;
 	private final ObjectMapper om = new ObjectMapper();
 
-	public OrderController(PaymentRequestProducer producer) {
+	public OrderController(PaymentRequestProducer producer, Counter ordersStarted) {
 		this.producer = producer;
+		this.ordersStarted = ordersStarted;
 	}
 
 	// REST endpoint: indítja az order folyamatot
 	@PostMapping("/{orderId}/start")
 	public ResponseEntity<String> startOrder(@PathVariable String orderId, @RequestParam double amount) {
 		try {
+			ordersStarted.increment();
 			// payload (üzleti adat)
 			String payload = om.createObjectNode()
 					.put("orderId", orderId)

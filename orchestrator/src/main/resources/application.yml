@@ -63,3 +63,4 @@ chaos:
     initial-interval-ms: 200
 
 management.endpoints.web.exposure.include: health,info,prometheus
+management.metrics.tags.app: ${spring.application.name}
