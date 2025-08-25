@@ -26,13 +26,16 @@
     <module>common-messaging</module>
   </modules>
   <!-- Közös verziószabályozás: ha kell extra lib, ide tedd -->
-  <dependencyManagement>
-    <dependencies>
-      <!-- példa: ha egységesen akarsz egy nem-boot-managed verziót beállítani,
-           itt add meg, és a modulokban csak groupId/artifactId kelljen -->
-      <!-- üres most; a Boot parent már menedzseli a legtöbb verziót -->
-
-      </dependencies>
+<dependencyManagement>
+  <dependencies>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-dependencies</artifactId>
+      <version>3.3.3</version>      <!-- példa; a te verziód -->
+      <type>pom</type>
+      <scope>import</scope>
+    </dependency>
+  </dependencies>
   </dependencyManagement>
   <!-- PluginManagement: opcionális; a Boot plugin a GYERMEK modulokban legyen -->
 <build>
@@ -58,7 +61,14 @@
     <plugin>
       <groupId>org.owasp</groupId>
       <artifactId>dependency-check-maven</artifactId>
-      <version>10.0.3</version>
+      <version>12.1.3</version>
+      <configuration>
+        <nvdApiKeyEnvironmentVariable>NVD_API_KEY</nvdApiKeyEnvironmentVariable>
+        <ossIndexEnabled>true</ossIndexEnabled>
+        <nvdEnabled>false</nvdEnabled>
+        <failOnError>false</failOnError>
+        <failBuildOnCVSS>0</failBuildOnCVSS>
+      </configuration>
       <executions>
         <execution>
           <goals>

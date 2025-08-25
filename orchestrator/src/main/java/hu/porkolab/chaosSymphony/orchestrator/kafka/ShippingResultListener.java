@@ -10,18 +10,22 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
-
+import io.micrometer.core.instrument.Counter;
 @Component
 public class ShippingResultListener {
 
 	private static final Logger logger = LoggerFactory.getLogger(ShippingResultListener.class);
-
+	private final Counter ordersSucceeded;
+	private final Counter ordersFailed;
 	private final IdempotencyStore idempotencyStore;
 	private final ObjectMapper om;
 
-	public ShippingResultListener(IdempotencyStore idempotencyStore, ObjectMapper om) {
+	public ShippingResultListener(IdempotencyStore idempotencyStore, ObjectMapper om, Counter ordersSucceeded,
+			Counter ordersFailed) {
 		this.idempotencyStore = idempotencyStore;
 		this.om = om;
+		this.ordersSucceeded = ordersSucceeded;
+		this.ordersFailed = ordersFailed;
 	}
 
 	@KafkaListener(topics = "shipping.result", groupId = "orchestrator-1")
@@ -46,6 +50,11 @@ public class ShippingResultListener {
 				default -> logger.warn("Unknown shipping status='{}' for orderId={}", status, orderId);
 			}
 
+			if ("DELIVERED".equalsIgnoreCase(status)) {
+				ordersSucceeded.increment();
+			} else {
+				ordersFailed.increment();
+			}
 		} catch (Exception e) {
 			logger.error("ShippingResult processing failed: {}", rec.value(), e);
 			throw e;

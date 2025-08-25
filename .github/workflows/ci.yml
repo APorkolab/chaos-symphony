@@ -1,16 +1,37 @@
 name: build
+
 on: [push, pull_request]
+
 jobs:
   maven:
     runs-on: ubuntu-latest
+
+    env:
+      # A pom.xml a környezeti változóból olvassa az NVD kulcsot
+      NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
-        with: { distribution: temurin, java-version: '21' }
-      - name: Cache Maven
+
+      - name: Set up Temurin JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      # Cache-eljük külön az OWASP DC adatbázist is
+      - name: Cache OWASP Dependency-Check data
         uses: actions/cache@v4
         with:
-          path: ~/.m2/repository
-          key: m2-${{ hashFiles('**/pom.xml') }}
-          restore-keys: m2-
-      - run: mvn -B -DskipTests=false verify
+          path: ~/.m2/repository/org/owasp/dependency-check-data
+          key: dc-data-${{ runner.os }}-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            dc-data-${{ runner.os }}-
+
+      # Egyszerű tisztítás, ha korábban sérült a DC adatbázis
+      - name: Purge DC database (safe to run)
+        run: mvn -q org.owasp:dependency-check-maven:purge || true
+
+      - name: Build & Dependency Check
+        run: mvn -U -B clean verify
