@@ -34,6 +34,77 @@ flowchart LR
   class A,P,O,I,S,AN svc
 
 
+# Postman collection
+
+Deploy könyvtárban megtalálható a Postman kollekció és environment fájl:
+
+ChaosSvc.postman_collection.json
+
+ChaosSvc.local_environment.json
+
+
+Használat:
+
+Importáld a kollekciót és az environmentet Postmanbe.
+
+Válaszd ki az environmentet: Chaos Symphony - Local.
+
+Futtatható endpointok:
+
+GET {{baseUrl}}/api/healthz
+
+GET {{baseUrl}}/api/chaos/status
+
+GET {{baseUrl}}/api/chaos/rules
+
+GET {{baseUrl}}/api/chaos/rules/:topic
+
+POST {{baseUrl}}/api/chaos/rules (bulk set – minta body benne)
+
+PUT {{baseUrl}}/api/chaos/rules/payment.result
+
+DELETE {{baseUrl}}/api/chaos/rules/payment.result
+
+DELETE {{baseUrl}}/api/chaos/rules
+
+Külön kollekciók az orchestrator és a DLQ-admin végpontokhoz is, plusz egy „Smoke Test” Postman Runner futást 20 rendelésre:
+
+Order + Orchestrator kollekció:
+ChaosSymphony.order_orchestrator.postman_collection.json
+
+DLQ Admin kollekció:
+ChaosSymphony.dlq_admin.postman_collection.json
+
+Services environment (base URL-ok):
+ChaosSymphony.services_environment.json
+
+Mit tudnak?
+
+Order & Orchestrator:
+
+Start NEW order (random UUID) – pre-request script generál orderId-t, amount változóval.
+
+Start order with explicit orderId
+
+Orchestrator egészség és loggers actuator hívások.
+
+DLQ Admin:
+
+List DLQ topics – első találatot beírja dltTopic változóba.
+
+Replay chosen DLT topic – a fent beállított dltTopic-kal.
+
+Használat:
+
+Importáld a két kollekciót és az environment fájlt.
+
+Válaszd az environmentet: Chaos Symphony - Services.
+
+Futtasd az Order API / Start NEW order (random UUID)-t 10–50 alkalommal Postman Runnerrel (iterations: 20–50).
+
+Amountot az environmentben állíthatod.
+
+Ha akarsz DLQ-t provokálni, kapcsolj be chaos szabályt payment/inventory/shipping resultokra, majd Replay chosen DLT topic.
 
 
 # Service portok
@@ -81,7 +152,7 @@ curl -s http://localhost:8095/api/metrics/paymentStatus
 
 # Chaos szabályok (példa)
 
-curl -X POST http://localhost:8088/api/chaos/rules \
+curl -X POST http://localhost:8085/api/chaos/rules \
   -H "Content-Type: application/json" \
   -d '{"topic:payment.result":{"pDrop":0.15,"pDup":0.05,"maxDelayMs":300,"pCorrupt":0.02}}'
 
@@ -616,7 +687,7 @@ DLQ replay példa:
 Chaos szabály példa (ha bekötöd a chaos-svc-t REST-tel):
 
 ```bash
-curl -X POST http://localhost:8088/api/chaos/rules \
+curl -X POST http://localhost:8085/api/chaos/rules \
   -H "Content-Type: application/json" \
   -d '{"topic:payment.result":{"pDrop":0.15,"pDup":0.05,"maxDelayMs":300,"pCorrupt":0.02}}'
 ```

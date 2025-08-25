@@ -21,25 +21,25 @@ import java.util.stream.Collectors;
 public class ChaosRefreshConfig {
 
 	private static final Logger log = LoggerFactory.getLogger(ChaosRefreshConfig.class);
+
 	private final AtomicReference<ChaosRules> rulesRef = new AtomicReference<>(new ChaosRules(Map.of()));
 
-	@Bean
-	public RestClient chaosRest() {
+	private final RestClient chaosRest;
+
+	public ChaosRefreshConfig(RestClient.Builder builder) {
 		String base = System.getProperty("chaos.url",
-				System.getenv().getOrDefault("CHAOS_URL", "http://localhost:8088"));
-		return RestClient.builder()
-				.baseUrl(base)
-				.build();
+				System.getenv().getOrDefault("CHAOS_URL", "http://localhost:8085"));
+		this.chaosRest = builder.baseUrl(base).build();
 	}
 
 	@Scheduled(fixedDelayString = "${chaos.refresh-ms:5000}")
-	public void refresh(RestClient client) {
+	public void refresh() {
 		try {
-			Map<String, Map<String, Object>> m = client.get()
+			@SuppressWarnings("unchecked")
+			Map<String, Map<String, Object>> m = chaosRest.get()
 					.uri("/api/chaos/rules")
 					.retrieve()
 					.body(Map.class);
-
 			if (m != null) {
 				var typed = m.entrySet().stream().collect(Collectors.toMap(
 						Map.Entry::getKey,
