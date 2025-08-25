@@ -43,13 +43,6 @@
       <artifactId>lombok</artifactId>
       <optional>true</optional>
     </dependency>
-
-    <!-- Test -->
-    <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-test</artifactId>
-      <scope>test</scope>
-    </dependency>
     
     <!-- Common messaging library -->
     <dependency>
@@ -57,12 +50,8 @@
       <artifactId>common-messaging</artifactId>
       <version>1.0.0</version>
     </dependency>
-    <dependency>
-      <groupId>junit</groupId>
-      <artifactId>junit</artifactId>
-      <version>3.8.1</version>
-      <scope>test</scope>
-    </dependency>
+    
+    <!-- Testing -->
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-test</artifactId>

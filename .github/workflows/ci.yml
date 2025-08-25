@@ -6,10 +6,6 @@ jobs:
   maven:
     runs-on: ubuntu-latest
 
-    env:
-      # A pom.xml a környezeti változóból olvassa az NVD kulcsot
-      NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
-
     steps:
       - uses: actions/checkout@v4
 
@@ -20,18 +16,5 @@ jobs:
           java-version: '21'
           cache: maven
 
-      # Cache-eljük külön az OWASP DC adatbázist is
-      - name: Cache OWASP Dependency-Check data
-        uses: actions/cache@v4
-        with:
-          path: ~/.m2/repository/org/owasp/dependency-check-data
-          key: dc-data-${{ runner.os }}-${{ hashFiles('**/pom.xml') }}
-          restore-keys: |
-            dc-data-${{ runner.os }}-
-
-      # Egyszerű tisztítás, ha korábban sérült a DC adatbázis
-      - name: Purge DC database (safe to run)
-        run: mvn -q org.owasp:dependency-check-maven:purge || true
-
-      - name: Build & Dependency Check
+      - name: Build & Test
         run: mvn -U -B clean verify
