@@ -4,7 +4,15 @@
   "name": "OrderCreated",
   "fields": [
     { "name": "orderId", "type": "string" },
-    { "name": "total", "type": "double" },
+    {
+      "name": "total",
+      "type": {
+        "type": "bytes",
+        "logicalType": "decimal",
+        "precision": 12,
+        "scale": 5
+      }
+    },
     { "name": "currency", "type": "string" }
   ]
 }
