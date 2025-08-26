@@ -11,65 +11,110 @@ on:
         description: 'Probability of chaos (0.0 to 1.0)'
         required: true
         default: '0.3'
+      delay_ms:
+        description: 'Delay in milliseconds for DELAY fault'
+        required: true
+        default: '1500'
 
 jobs:
   run-gameday:
     runs-on: ubuntu-latest
     steps:
-      - name: 'Step 0: Checkout code'
+      - name: 'Step 0: Checkout Code'
         uses: actions/checkout@v4
 
-      - name: 'Step 1: Smoke Test (Normal Load)'
+      - name: 'Step 1: Start System with Docker Compose'
         run: |
-          echo "Running smoke test for ${{ github.event.inputs.smoke_test_duration }}..."
-          # In a real scenario, use a proper load testing tool like Locust or JMeter.
-          # This is a simple placeholder using curl in a loop.
-          timeout ${{ github.event.inputs.smoke_test_duration }} bash -c 'while true; do curl -s -X POST "http://localhost:8080/api/orders/start?amount=100"; sleep 0.5; done' || true
-          echo "Smoke test finished."
+          cd deployment
+          docker compose up --build -d
 
-      - name: 'Step 2: Chaos ON'
+      - name: 'Step 2: Wait for Services to be Healthy'
+        run: |
+          echo "Waiting for services to become healthy..."
+          services=("order-api:8080" "orchestrator:8091" "payment-svc:8082" "inventory-svc:8084" "shipping-svc:8085" "chaos-svc:8088" "dlq-admin:8089" "streams-analytics:8095")
+          for service in "${services[@]}"; do
+            name=$(echo $service | cut -d: -f1)
+            port=$(echo $service | cut -d: -f2)
+            echo "Waiting for $name on port $port..."
+            timeout 180s bash -c "until curl -s http://localhost:$port/actuator/health | grep -q '\"status\":\"UP\"'; do echo -n '.'; sleep 5; done"
+            echo -e "\n$name is UP!"
+          done
+
+      - name: 'Step 3: Bootstrap Debezium Connector'
+        run: |
+          echo "Waiting for Kafka Connect to be ready..."
+          timeout 60s bash -c "until curl -s http://localhost:8083/connectors; do echo -n '.'; sleep 3; done"
+          echo -e "\nKafka Connect is UP. Registering connector..."
+          ./scripts/bootstrap_cdc.sh
+
+      - name: 'Step 4: Run Baseline Load'
+        id: baseline_metrics
+        run: |
+          echo "Running baseline smoke test for ${{ github.event.inputs.smoke_test_duration }}..."
+          timeout ${{ github.event.inputs.smoke_test_duration }} bash -c 'while true; do curl -s -X POST "http://localhost:8080/api/orders/start" -H "Content-Type: application/json" --data "{\\"total\\": 100, \\"customerId\\": \\"customer-123\\"}"; sleep 0.5; done' || true
+          echo "Baseline test finished. Waiting for metrics to stabilize..."
+          sleep 15
+          METRIC_URL="http://localhost:9090/api/v1/query?query=histogram_quantile(0.95, sum(rate(kafka_streams_process_latency_ms_bucket[1m])) by (le))"
+          P95_BASELINE=$(curl -s $METRIC_URL | jq -r '.data.result[0].value[1]')
+          echo "P95_BASELINE=$P95_BASELINE" >> $GITHUB_ENV
+
+      - name: 'Step 5: Inject Chaos'
         id: chaos_on
         run: |
-          echo "Injecting DELAY chaos with probability ${{ github.event.inputs.chaos_probability }}..."
-          RULE_ID=$(curl -s -X POST -H "Content-Type: application/json" \
-            --data '{"targetTopic": "all", "types": ["DELAY"], "p": ${{ github.event.inputs.chaos_probability }}, "delayMs": 1500}' \
-            http://localhost:8088/api/chaos/rules | jq -r .id)
+          echo "Injecting DELAY chaos with p=${{ github.event.inputs.chaos_probability }} and delay=${{ github.event.inputs.delay_ms }}ms..."
+          RULE_PAYLOAD=$(printf '{"targetTopic":"all", "faultType":"DELAY", "probability":%s, "delayMs":%s}' \
+            "${{ github.event.inputs.chaos_probability }}" \
+            "${{ github.event.inputs.delay_ms }}")
+
+          RULE_ID=$(curl -s -X POST -H "Content-Type: application/json" --data "$RULE_PAYLOAD" http://localhost:8088/api/chaos/rules | jq -r .id)
           echo "Created chaos rule with ID: $RULE_ID"
-          echo "::set-output name=rule_id::$RULE_ID"
+          echo "rule_id=$RULE_ID" >> $GITHUB_OUTPUT
 
-      - name: 'Step 3: Measure Impact'
+      - name: 'Step 6: Run Load Under Chaos & Measure Impact'
+        id: chaos_metrics
         run: |
-          echo "Waiting for 60 seconds to measure impact..."
-          sleep 60
-          echo "Measuring impact (e.g., call Grafana API, check Prometheus)..."
-          # Example: curl -s "http://localhost:9090/api/v1/query?query=histogram_quantile(0.95, sum(rate(processing_time_ms_bucket[5m])))"
+          echo "Running smoke test under chaos for ${{ github.event.inputs.smoke_test_duration }}..."
+          timeout ${{ github.event.inputs.smoke_test_duration }} bash -c 'while true; do curl -s -X POST "http://localhost:8080/api/orders/start" -H "Content-Type: application/json" --data "{\\"total\\": 100, \\"customerId\\": \\"customer-123\\"}"; sleep 0.5; done' || true
+          echo "Chaos test finished. Waiting for metrics to stabilize..."
+          sleep 15
+          METRIC_URL="http://localhost:9090/api/v1/query?query=histogram_quantile(0.95, sum(rate(kafka_streams_process_latency_ms_bucket[1m])) by (le))"
+          P95_CHAOS=$(curl -s $METRIC_URL | jq -r '.data.result[0].value[1]')
+          echo "P95_CHAOS=$P95_CHAOS" >> $GITHUB_ENV
 
-      - name: 'Step 4: Auto-Heal'
-        run: |
-          echo "Attempting auto-healing..."
-          echo "Scaling consumers (placeholder)..."
-          echo "Retrying DLQ batch (placeholder)..."
-
-      - name: 'Step 5: Chaos OFF & Final Measurement'
+      - name: 'Step 7: Turn Chaos OFF'
         run: |
           echo "Turning chaos OFF..."
           RULE_ID=${{ steps.chaos_on.outputs.rule_id }}
           curl -s -X DELETE "http://localhost:8088/api/chaos/rules/$RULE_ID"
           echo "Deleted chaos rule $RULE_ID."
-          echo "Waiting for 30 seconds for system to stabilize..."
-          sleep 30
-          echo "Taking final measurement..."
 
-      - name: 'Step 6: Generate Report'
+      - name: 'Step 8: Generate Report'
         run: |
           echo "Generating GameDay report..."
-          echo "## GameDay Report - $(date)" > gameday-report.md
-          echo "**Chaos Probability:** ${{ github.event.inputs.chaos_probability }}" >> gameday-report.md
-          echo "A chaos experiment was run successfully." >> gameday-report.md
-          echo "(In a real workflow, this would contain Grafana snapshots and Prometheus query results.)" >> gameday-report.md
+          echo "## 🎲 GameDay Report - $(date)" > gameday-report.md
+          echo "" >> gameday-report.md
+          echo "### Experiment Parameters" >> gameday-report.md
+          echo "- **Duration:** ${{ github.event.inputs.smoke_test_duration }}" >> gameday-report.md
+          echo "- **Chaos Probability:** ${{ github.event.inputs.chaos_probability }}" >> gameday-report.md
+          echo "- **Delay:** ${{ github.event.inputs.delay_ms }}ms" >> gameday-report.md
+          echo "" >> gameday-report.md
+          echo "### Results" >> gameday-report.md
+          echo "| Metric | Baseline | Under Chaos |" >> gameday-report.md
+          echo "|---|---|---|" >> gameday-report.md
+          echo "| **p95 Latency (ms)** | \`${{ env.P95_BASELINE }}\` | \`${{ env.P95_CHAOS }}\` |" >> gameday-report.md
 
-      - name: 'Upload Report Artifact'
-        uses: actions/upload-artifact@v3
+      - name: 'Step 9: Upload Report Artifact'
+        uses: actions/upload-artifact@v4
         with:
           name: gameday-report
           path: gameday-report.md
+
+  cleanup:
+    runs-on: ubuntu-latest
+    if: always() # Always run this job to clean up
+    needs: run-gameday
+    steps:
+      - name: 'Tear Down Docker Compose'
+        run: |
+          cd deployment
+          docker compose down

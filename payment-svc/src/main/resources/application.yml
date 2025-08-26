@@ -5,6 +5,12 @@ spring:
   jackson:
     time-zone: Europe/Budapest
   kafka:
+    topic:
+      payment:
+        requested: payment.requested
+    group:
+      id:
+        payment: payment-requested
     bootstrap-servers: 127.0.0.1:29092
     listener:
       ack-mode: record

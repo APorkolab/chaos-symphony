@@ -4,9 +4,9 @@ import au.com.dius.pact.consumer.MockServer;
 import au.com.dius.pact.consumer.dsl.PactDslWithProvider;
 import au.com.dius.pact.consumer.junit5.PactConsumerTestExt;
 import au.com.dius.pact.consumer.junit5.PactTestFor;
-import au.com.dius.pact.core.model.RequestResponsePact;
+import au.com.dius.pact.core.model.PactSpecVersion;
+import au.com.dius.pact.core.model.V4Pact;
 import au.com.dius.pact.core.model.annotations.Pact;
-
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -20,25 +20,25 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-@Disabled
+@Disabled("Pact V4 API issues require further investigation.")
 @ExtendWith(PactConsumerTestExt.class)
-@PactTestFor(providerName = "PaymentSvc") 
-class PaymentSvcContractTest {
+@PactTestFor(providerName = "PaymentSvc", pactVersion = PactSpecVersion.V4)
+public class PaymentSvcContractTest {
 
-    private static final String ORDER_ID = "61e45529-6e55-4670-9980-5a3637202391";
+    private static final String ORDER_ID = "a7e7c61b-9a89-424f-a496-3c6a02a1d478";
 
     @Pact(consumer = "Orchestrator")
-    RequestResponsePact paymentStatusExists(PactDslWithProvider builder) { // JAVÍTVA
+    public V4Pact paymentStatusExists(PactDslWithProvider builder) {
         return builder
-                .given("a payment status exists for an order", Map.of("orderId", ORDER_ID))
-                .uponReceiving("a request for payment status")
-                .path("/api/payments/status/" + ORDER_ID)
+            .given("a payment status exists for order " + ORDER_ID)
+            .uponReceiving("a request for payment status")
                 .method("GET")
-                .willRespondWith()
+                .path("/api/payments/status/" + ORDER_ID)
+            .willRespondWith()
                 .status(200)
                 .headers(Map.of("Content-Type", "application/json"))
                 .body("{\"orderId\": \"" + ORDER_ID + "\", \"status\": \"CHARGED\"}")
-                .toPact();
+            .toPact(V4Pact.class);
     }
 
     @Test

@@ -74,7 +74,7 @@ services:
         condition: service_started
       postgres:
         condition: service_healthy
-    ports: ["8083:8083"]
+    ports: ["8093:8083"]
     environment:
       BOOTSTRAP_SERVERS: kafka:9092
       GROUP_ID: "debezium"
@@ -120,7 +120,19 @@ services:
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
       - JAVA_TOOL_OPTIONS=-javaagent:/otel/opentelemetry-javaagent.jar
     volumes: [otel-agent:/otel]
-    ports: ["8081:8081"]
+    ports: ["8082:8081"]
+    networks: [chaos-net]
+
+  payment-svc-canary:
+    build: { context: ../payment-svc }
+    depends_on: { kafka: { condition: service_started }, postgres: { condition: service_healthy }, otel-agent-downloader: { condition: service_completed_successfully } }
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker,canary
+      - OTEL_SERVICE_NAME=payment-svc-canary
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
+      - JAVA_TOOL_OPTIONS=-javaagent:/otel/opentelemetry-javaagent.jar
+    volumes: [otel-agent:/otel]
+    ports: ["8083:8081"]
     networks: [chaos-net]
 
   inventory-svc:

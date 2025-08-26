@@ -18,12 +18,12 @@ This project isn't just a simple CRUD application; it's an exploration of how to
 ---
 
 **Trace Screenshot:**
-*[TODO: Insert end-to-end trace screenshot from Jaeger or similar tool here. Show the full SAGA path from `order-api` to `shipping-svc`.]*
+*[A screenshot of a distributed trace from `order-api` to `shipping-svc` should be placed here after running the system.]*
 
 ---
 
 **Grafana Dashboard Screenshot:**
-*[TODO: Insert screenshot of the main Grafana dashboard here. Show the p95 latency, DLQ count, and SLO burn rate panels.]*
+*[A screenshot of the main Grafana dashboard showing p95 latency, DLQ count, and SLO burn rate should be placed here after running the system.]*
 
 ---
 
@@ -67,41 +67,40 @@ flowchart LR
 
 ## 🚀 Getting Started
 
+The entire system is fully containerized. The backend services and infrastructure run in Docker, while the UI must be run locally.
 
-The entire system (all backend services, UI, and infrastructure) is fully containerized and can be started with a single command:
+**Prerequisites:**
+*   Docker and Docker Compose
+*   Node.js 20+ and npm
 
-**Prerequisites:** Docker, Java 21, Maven, Node.js & npm.
+**Step 1: Start Backend & Infrastructure**
 
-The entire system can be started with just a few commands in separate terminals.
-
-
-**Terminal 1: Start Infrastructure**
+From the project root directory, run:
 ```bash
 cd deployment
 docker compose up --build -d
 ```
+This command builds and starts all Java services and the required infrastructure (Kafka, Postgres, Debezium, etc.).
 
-After a few minutes for services to build and start, the system will be available at:
+**Step 2: Start the Frontend UI**
 
-## 📊 System Endpoints
-=======
-docker compose up -d
-```
-Wait for all containers to be healthy.
-
-**Terminal 2: Start Backend Services**
+In a separate terminal, navigate to the UI directory and start the Angular development server:
 ```bash
-# This command runs all Spring Boot applications
-mvn -pl orchestrator,payment-svc,inventory-svc,shipping-svc,order-api,streams-analytics,dlq-admin,chaos-svc spring-boot:run
-```
-
-**Terminal 3: Start Frontend UI**
-```bash
+# From the project root
 cd ui/dashboard
 npm install
 npm start
 ```
-The UI is now available at `http://localhost:4200`.
+The UI will be available at `http://localhost:4200`.
+
+**Step 3: Configure Debezium CDC**
+
+After the services are running, the Debezium connector for the `orders` service must be registered. A script is provided for convenience.
+```bash
+# From the project root, run:
+./scripts/bootstrap_cdc.sh
+```
+You can check the status of all running containers with `docker compose ps` from within the `deployment` directory.
 
 ## 📊 Observability Stack
 

@@ -27,7 +27,7 @@ public class PaymentRequestedListener {
 	private final PaymentStatusStore paymentStatusStore;
 	private final ObjectMapper om = new ObjectMapper();
 
-	@KafkaListener(topics = "payment.requested", groupId = "payment-requested")
+	@KafkaListener(topics = "${kafka.topic.payment.requested}", groupId = "${kafka.group.id.payment}")
 	@Transactional
 	public void onPaymentRequested(ConsumerRecord<String, String> rec) throws Exception {
 		if (!idempotencyStore.markIfFirst(rec.key())) {

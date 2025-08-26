@@ -20,7 +20,13 @@ export class DlqService {
     return this.http.get<DlqMessage[]>(`${this.apiUrl}/${topicName}/peek?n=${count}`);
   }
 
-  retryAll(topicName: string): Observable<any> {
+  retryAllForTopic(topicName: string): Observable<any> {
     return this.http.post(`${this.apiUrl}/${topicName}/replay`, {});
+  }
+
+  retrySelected(topicName: string, messageIds: string[]): Observable<any> {
+    // This assumes a backend endpoint that can accept a list of IDs to retry.
+    // The dlq-admin service would need to be updated to handle this.
+    return this.http.post(`${this.apiUrl}/${topicName}/retry-selected`, { messageIds });
   }
 }
