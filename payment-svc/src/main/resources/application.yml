@@ -12,6 +12,11 @@ spring:
       id:
         payment: payment-requested
     bootstrap-servers: 127.0.0.1:29092
+    retry:
+      max-attempts: 5
+      initial-interval-ms: 300
+      multiplier: 2.5
+      max-interval-ms: 3000
     listener:
       ack-mode: record
       type: single

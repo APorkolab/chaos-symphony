@@ -38,11 +38,17 @@ public class KafkaErrorHandlingConfig {
     }
 
 @Bean
-public DefaultErrorHandler errorHandler(DeadLetterPublishingRecoverer dlpr) {
-    var backoff = new ExponentialBackOffWithMaxRetries(3);
-    backoff.setInitialInterval(200);
-    backoff.setMultiplier(2.0);
-    backoff.setMaxInterval(2000);
+public DefaultErrorHandler errorHandler(
+        DeadLetterPublishingRecoverer dlpr,
+        @Value("${kafka.retry.max-attempts:4}") int maxAttempts,
+        @Value("${kafka.retry.initial-interval-ms:200}") long initialInterval,
+        @Value("${kafka.retry.multiplier:2.0}") double multiplier,
+        @Value("${kafka.retry.max-interval-ms:2000}") long maxInterval) {
+
+    var backoff = new ExponentialBackOffWithMaxRetries(maxAttempts);
+    backoff.setInitialInterval(initialInterval);
+    backoff.setMultiplier(multiplier);
+    backoff.setMaxInterval(maxInterval);
 
     var handler = new DefaultErrorHandler(dlpr, backoff);
     handler.setCommitRecovered(true);

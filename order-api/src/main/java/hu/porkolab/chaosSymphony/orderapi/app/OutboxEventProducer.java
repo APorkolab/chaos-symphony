@@ -2,19 +2,20 @@ package hu.porkolab.chaosSymphony.orderapi.app;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import hu.porkolab.chaosSymphony.common.EventEnvelope;
-import hu.porkolab.chaosSymphony.orderapi.domain.OutboxEvent;
-import hu.porkolab.chaosSymphony.orderapi.domain.OutboxRepository;
+import hu.porkolab.chaosSymphony.orderapi.domain.OrderOutbox;
+import hu.porkolab.chaosSymphony.orderapi.domain.OrderOutboxRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import org.springframework.stereotype.Component;
 
+import java.time.Instant;
 import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
 public class OutboxEventProducer {
 
-	private final OutboxRepository outboxRepository;
+	private final OrderOutboxRepository outboxRepository;
 	private final ObjectMapper objectMapper;
 
 	@SneakyThrows
@@ -23,7 +24,7 @@ public class OutboxEventProducer {
 		String eventType = event.getClass().getSimpleName();
 
 		// Feltételezzük, hogy az esemény tartalmaz egy orderId mezőt
-		UUID orderId = (UUID) event.getClass().getMethod("orderId").invoke(event);
+		UUID orderId = (UUID) event.getClass().getMethod("getOrderId").invoke(event);
 
 		EventEnvelope envelope = new EventEnvelope(
 				UUID.randomUUID().toString(),
@@ -33,11 +34,13 @@ public class OutboxEventProducer {
 
 		String envelopeJson = objectMapper.writeValueAsString(envelope);
 
-		OutboxEvent outboxEvent = new OutboxEvent();
-		outboxEvent.setAggregateId(orderId.toString());
-		outboxEvent.setAggregateType("Order");
-		outboxEvent.setPayload(envelopeJson);
-		outboxEvent.setType(eventType);
+		OrderOutbox outboxEvent = OrderOutbox.builder()
+				.id(UUID.randomUUID())
+				.aggregateId(orderId)
+				.type(eventType)
+				.payload(envelopeJson)
+				.occurredAt(Instant.now())
+				.build();
 
 		outboxRepository.save(outboxEvent);
 	}

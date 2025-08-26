@@ -7,40 +7,24 @@ import hu.porkolab.chaosSymphony.orderapi.domain.OrderOutboxRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-
 import java.math.BigDecimal;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest
-@Testcontainers
 class OrderServiceIntegrationTest {
 
-    @Container
-    static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine");
+    private final OrderService orderService;
+    private final OrderOutboxRepository outboxRepository;
+    private final ObjectMapper objectMapper;
 
-    @DynamicPropertySource
-    static void configureProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", postgres::getJdbcUrl);
-        registry.add("spring.datasource.username", postgres::getUsername);
-        registry.add("spring.datasource.password", postgres::getPassword);
-        registry.add("spring.jpa.hibernate.ddl-auto", () -> "create");
+    @Autowired
+    OrderServiceIntegrationTest(OrderService orderService, OrderOutboxRepository outboxRepository, ObjectMapper objectMapper) {
+        this.orderService = orderService;
+        this.outboxRepository = outboxRepository;
+        this.objectMapper = objectMapper;
     }
-
-    @Autowired
-    private OrderService orderService;
-
-    @Autowired
-    private OrderOutboxRepository outboxRepository;
-
-    @Autowired
-    private ObjectMapper objectMapper;
 
     @Test
     void createOrder_shouldSaveOrderAndOutboxEventAtomically() throws Exception {
@@ -68,4 +52,5 @@ class OrderServiceIntegrationTest {
         assertEquals(customerId, payload.getCustomerId());
         assertEquals(99.99, payload.getTotal());
     }
+
 }
