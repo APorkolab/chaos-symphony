@@ -2,6 +2,7 @@ package hu.porkolab.chaosSymphony.orchestrator.kafka;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode; // Szükséges import
 import hu.porkolab.chaosSymphony.common.EnvelopeHelper;
 import hu.porkolab.chaosSymphony.common.EventEnvelope;
 import hu.porkolab.chaosSymphony.common.idemp.IdempotencyStore;
@@ -18,9 +19,9 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class PaymentResultListener {
 
-	private final ObjectMapper om = new ObjectMapper();
+	private final ObjectMapper om;
 	private final IdempotencyStore idempotencyStore;
-	private final Counter ordersSucceeded;
+	private final InventoryRequestProducer inventoryProducer; // KIEGÉSZÍTVE: Új producer
 	private final Counter ordersFailed;
 
 	@KafkaListener(topics = "payment.result", groupId = "orchestrator-payment-result")
@@ -37,8 +38,10 @@ public class PaymentResultListener {
 		String orderId = p.path("orderId").asText(null);
 
 		if ("CHARGED".equalsIgnoreCase(status)) {
-			log.info("Payment successful for orderId={}", orderId);
-			ordersSucceeded.increment();
+			log.info("Payment successful for orderId={}, requesting inventory reservation.", orderId);
+
+			ObjectNode payload = om.createObjectNode().put("orderId", orderId);
+			inventoryProducer.sendRequest(orderId, payload.toString());
 		} else {
 			log.error("Payment failed for orderId={}", orderId);
 			ordersFailed.increment();

@@ -2,9 +2,12 @@ package hu.porkolab.chaosSymphony.payment.kafka;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import hu.porkolab.chaosSymphony.common.EnvelopeHelper;
 import hu.porkolab.chaosSymphony.common.EventEnvelope;
 import hu.porkolab.chaosSymphony.common.idemp.IdempotencyStore;
+import hu.porkolab.chaosSymphony.payment.store.PaymentStatusStore;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -21,6 +24,7 @@ public class PaymentRequestedListener {
 
 	private final PaymentResultProducer producer;
 	private final IdempotencyStore idempotencyStore;
+	private final PaymentStatusStore paymentStatusStore;
 	private final ObjectMapper om = new ObjectMapper();
 
 	@KafkaListener(topics = "${kafka.topic.payment.requested}", groupId = "${kafka.group.id.payment}")
@@ -40,6 +44,7 @@ public class PaymentRequestedListener {
 		// Simulate payment processing
 		boolean success = ThreadLocalRandom.current().nextDouble() < 0.9;
 		String status = success ? "CHARGED" : "CHARGE_FAILED";
+		paymentStatusStore.save(orderId, status);
 
 		String resultPayload = om.createObjectNode()
 				.put("orderId", orderId)

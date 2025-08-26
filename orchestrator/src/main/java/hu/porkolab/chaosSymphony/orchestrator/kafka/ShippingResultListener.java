@@ -40,8 +40,8 @@ public class ShippingResultListener {
 
 		switch (status) {
 			case "DELIVERED", "SHIPPED" -> {
-				log.debug("Order {} successfully {}", orderId, status.toLowerCase());
-				ordersSucceeded.increment();
+				log.info("Order {} successfully completed with status: {}", orderId, status.toLowerCase());
+				ordersSucceeded.increment(); // EZ A HELYES HELY a sikeresség mérésére
 			}
 			case "FAILED" -> {
 				log.warn("Shipping FAILED for orderId={}", orderId);

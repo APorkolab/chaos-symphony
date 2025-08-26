@@ -20,7 +20,7 @@
     <dependency>
       <groupId>hu.porkolab.chaosSymphony</groupId>
       <artifactId>common-messaging</artifactId>
-      <version>1.0.0</version>
+      <version>${project.version}</version>
     </dependency>
     <dependency>
       <groupId>jakarta.validation</groupId>
