@@ -20,7 +20,6 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-@Disabled("Pact V4 API issues require further investigation.")
 @ExtendWith(PactConsumerTestExt.class)
 @PactTestFor(providerName = "PaymentSvc", pactVersion = PactSpecVersion.V4)
 public class PaymentSvcContractTest {

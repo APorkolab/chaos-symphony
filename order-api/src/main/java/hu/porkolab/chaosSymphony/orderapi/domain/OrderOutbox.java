@@ -29,7 +29,7 @@ public class OrderOutbox {
     @Column(nullable = false)
     private String type;
 
-    @Column(columnDefinition = "jsonb", nullable = false)
+    @Column(nullable = false)
     private String payload;
 
     @Column(name = "occurred_at", nullable = false)
