@@ -5,6 +5,7 @@
   "fields": [
     { "name": "orderId", "type": "string" },
     { "name": "total", "type": "double" },
-    { "name": "currency", "type": "string" }
+    { "name": "currency", "type": "string" },
+    { "name": "customerId", "type": ["null", "string"], "default": null }
   ]
 }

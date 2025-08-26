@@ -28,8 +28,9 @@ public class OrderCreatedListener {
 
         OrderCreated event = rec.value();
         String orderId = event.getOrderId().toString();
+        String customerId = event.getCustomerId() == null ? "N/A" : event.getCustomerId().toString();
 
-        log.info("OrderCreated received for orderId={} -> sending PaymentRequested", orderId);
+        log.info("OrderCreated received for orderId={}, customerId={} -> sending PaymentRequested", orderId, customerId);
 
         String paymentPayload = om.createObjectNode()
                 .put("orderId", orderId)

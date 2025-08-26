@@ -17,16 +17,32 @@ export class OrderService {
   }
 
   getOrderHistory(id: string): Observable<OrderHistory> {
-    // We get the current state and build a "partial" history from it.
-    // A real implementation would have a dedicated history endpoint.
+    // TODO: A real implementation would fetch this from a dedicated history endpoint.
+    // For now, we simulate a realistic history timeline on the frontend
+    // to demonstrate the UI component's functionality.
     return this.http.get<Order>(`${this.apiUrl}/${id}`).pipe(
       map(order => {
-        // Create a synthetic history based on current status
+        const historyEvents = [];
+        const createdTime = new Date(order.createdAt);
+
+        historyEvents.push({ status: OrderStatus.NEW, timestamp: order.createdAt });
+
+        if ([OrderStatus.PAID, OrderStatus.ALLOCATED, OrderStatus.SHIPPED].includes(order.status)) {
+          historyEvents.push({ status: OrderStatus.PAID, timestamp: new Date(createdTime.getTime() + 1000).toISOString() });
+        }
+        if ([OrderStatus.ALLOCATED, OrderStatus.SHIPPED].includes(order.status)) {
+          historyEvents.push({ status: OrderStatus.ALLOCATED, timestamp: new Date(createdTime.getTime() + 2000).toISOString() });
+        }
+        if (order.status === OrderStatus.SHIPPED) {
+          historyEvents.push({ status: OrderStatus.SHIPPED, timestamp: new Date(createdTime.getTime() + 3000).toISOString() });
+        }
+        if (order.status === OrderStatus.FAILED) {
+            historyEvents.push({ status: OrderStatus.FAILED, timestamp: new Date(createdTime.getTime() + 4000).toISOString() });
+        }
+
         const history: OrderHistory = {
           ...order,
-          history: [
-            { status: order.status, timestamp: order.createdAt } // Simplified
-          ]
+          history: historyEvents.reverse(), // Show most recent first
         };
         return history;
       })
@@ -35,5 +51,14 @@ export class OrderService {
 
   createOrder(amount: number): Observable<any> {
     return this.http.post(`${this.apiUrl}/start?amount=${amount}`, {});
+  }
+
+  replayLastFiveMinutes(): Observable<any> {
+    const request = {
+      consumerGroupId: 'orchestrator-order-created',
+      duration: '5m'
+    };
+    // Note: This calls a different service (streams-analytics)
+    return this.http.post('http://localhost:8095/api/replay', request);
   }
 }

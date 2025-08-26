@@ -69,4 +69,13 @@ export class ChaosService {
       tap(() => this.loadSettings()) // Refresh state from backend after change
     );
   }
+
+  setCanary(enabled: boolean): Observable<any> {
+    const config = {
+      enabled: enabled,
+      percentage: 0.05 // As per spec
+    };
+    // The API URL for canary is different from rules
+    return this.http.post('http://localhost:8088/api/canary/config', config);
+  }
 }

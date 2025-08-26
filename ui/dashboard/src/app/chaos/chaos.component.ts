@@ -24,6 +24,7 @@ export class ChaosComponent implements OnInit {
     [FaultType.MUTATE]: { enabled: false, probability: 0 },
     [FaultType.DROP]: { enabled: false, probability: 0 },
   };
+  canaryEnabled: boolean = false;
 
   constructor(private chaosService: ChaosService) {}
 
@@ -41,6 +42,17 @@ export class ChaosComponent implements OnInit {
     this.chaosService.updateSetting(faultType, setting).subscribe({
       next: () => console.log(`${faultType} updated successfully.`),
       error: (err) => console.error(`Failed to update ${faultType}`, err)
+    });
+  }
+
+  onCanaryToggle(): void {
+    this.chaosService.setCanary(this.canaryEnabled).subscribe({
+      next: () => console.log(`Canary mode set to ${this.canaryEnabled}`),
+      error: (err) => {
+        console.error('Failed to set canary mode', err);
+        // Revert the toggle on error
+        this.canaryEnabled = !this.canaryEnabled;
+      }
     });
   }
 }

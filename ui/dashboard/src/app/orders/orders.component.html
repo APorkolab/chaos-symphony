@@ -53,10 +53,10 @@
       <div class="flex justify-between items-center mb-4">
         <h2 class="text-xl font-semibold">Order Timeline</h2>
         <button
-          title="Time-travel replay not implemented"
-          disabled
-          class="bg-gray-600 text-gray-400 font-bold py-2 px-4 rounded-md cursor-not-allowed">
-          Replay
+          (click)="replay()"
+          title="Replay events from the last 5 minutes"
+          class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-md transition duration-300">
+          Replay 5m
         </button>
       </div>
       <div *ngIf="selectedOrderHistory$ | async as selectedOrder; else noOrderSelected">
