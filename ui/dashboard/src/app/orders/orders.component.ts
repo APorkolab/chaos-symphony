@@ -47,12 +47,22 @@ export class OrdersComponent implements OnInit {
       this.orderService.createOrder(this.newOrderAmount).subscribe({
         next: () => {
           console.log('Order created successfully');
-          // Ideally, we would refresh the list or add the new order
-          // For now, we just log it.
           this.loadOrders();
         },
         error: (err) => console.error('Failed to create order', err)
       });
     }
+  }
+
+  replay(): void {
+    this.orderService.replayLastFiveMinutes().subscribe({
+      next: () => {
+        console.log('Replay requested successfully');
+        // The UI should refresh automatically as new events are processed.
+        // We can add a small delay and then force a refresh for good measure.
+        setTimeout(() => this.loadOrders(), 1000);
+      },
+      error: (err) => console.error('Failed to request replay', err)
+    });
   }
 }

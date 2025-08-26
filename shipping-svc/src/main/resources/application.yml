@@ -1,5 +1,5 @@
 server:
-  port: 8084
+  port: 8085
 spring:
   jackson:
     time-zone: Europe/Budapest
@@ -26,6 +26,8 @@ spring:
       client.dns.lookup: use_all_dns_ips
 
 management:
+  server:
+    port: 9085
   metrics:
     tags:
       app: ${spring.application.name}

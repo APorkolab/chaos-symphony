@@ -62,5 +62,21 @@ chaos:
     max-attempts: 2
     initial-interval-ms: 200
 
-management.endpoints.web.exposure.include: health,info,prometheus
-management.metrics.tags.app: ${spring.application.name}
+canary:
+  payment:
+    percentage: 0.0
+
+management:
+  server:
+    port: 9091
+  endpoint:
+    env:
+      post:
+        enabled: true
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,env
+  metrics:
+    tags:
+      app: ${spring.application.name}

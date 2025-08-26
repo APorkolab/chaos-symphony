@@ -1,5 +1,5 @@
 server:
-  port: 8086
+  port: 8089
 spring:
   jackson:
     time-zone: Europe/Budapest
@@ -21,6 +21,8 @@ spring:
       client.dns.lookup: use_all_dns_ips
 
 management:
+  server:
+    port: 9089
   endpoints:
     web:
       exposure:

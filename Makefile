@@ -1,25 +1,44 @@
-.PHONY: up down run stop e2e chaos-on chaos-off clean
+# ==============================================================================
+# Makefile for Chaos Symphony Project
+# ==============================================================================
+
+# Variables
+DOCKER_COMPOSE_FILE = deployment/docker-compose.yml
+MAVEN_SERVICES = -pl order-api,orchestrator,payment-svc,inventory-svc,shipping-svc,streams-analytics,dlq-admin,chaos-svc
+
+.PHONY: help up down run-backend run-ui test clean
+
+help:
+	@echo "Usage: make [target]"
+	@echo ""
+	@echo "Targets:"
+	@echo "  up             - Start all infrastructure containers (Kafka, Postgres, etc.)"
+	@echo "  down           - Stop all infrastructure containers"
+	@echo "  run-backend    - Run all backend Spring Boot services locally"
+	@echo "  run-ui         - Run the Angular UI development server"
+	@echo "  test           - Run all backend Maven tests"
+	@echo "  clean          - Clean all Maven projects"
 
 up:
-\tcd deployment && docker compose up -d
+	@echo "Starting infrastructure..."
+	@docker compose -f $(DOCKER_COMPOSE_FILE) up --build -d
 
 down:
-\tcd deployment && docker compose down -v
+	@echo "Stopping infrastructure..."
+	@docker compose -f $(DOCKER_COMPOSE_FILE) down
 
-run:
-\tmvn -q -pl order-api,orchestrator,payment-svc,inventory-svc,shipping-svc spring-boot:run -Dspring-boot.run.profiles=local
+run-backend:
+	@echo "Running all backend services..."
+	@mvn $(MAVEN_SERVICES) spring-boot:run
 
-stop:
-\tpkill -f 'org.springframework.boot.loader.JarLauncher' || true
+run-ui:
+	@echo "Starting Angular UI..."
+	@cd ui/dashboard && npm start
 
-e2e:
-\tbash scripts/batch-start.sh
-
-chaos-on:
-\tcp chaos/rules.json chaos/rules.active.json
-
-chaos-off:
-\trm -f chaos/rules.active.json
+test:
+	@echo "Running backend tests..."
+	@mvn -U -B clean verify
 
 clean:
-\tmvn -q clean
+	@echo "Cleaning Maven projects..."
+	@mvn clean
