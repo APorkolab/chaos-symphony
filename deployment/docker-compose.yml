@@ -108,7 +108,7 @@ services:
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
       - JAVA_TOOL_OPTIONS=-javaagent:/otel/opentelemetry-javaagent.jar
     volumes: [otel-agent:/otel]
-    ports: ["8091:8091"]
+    ports: ["8091:8091", "9091:9091"]
     networks: [chaos-net]
 
   payment-svc:

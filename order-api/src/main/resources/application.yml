@@ -35,7 +35,12 @@ spring:
       value-serializer: org.apache.kafka.common.serialization.StringSerializer    
 
 management:
-  endpoints.web.exposure.include: health,info,prometheus
+  server:
+    port: 9080
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
   metrics:
     tags:
       app: ${spring.application.name}

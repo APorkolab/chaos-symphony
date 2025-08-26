@@ -33,6 +33,8 @@ spring:
       client.dns.lookup: use_all_dns_ips
 
 management:
+  server:
+    port: 9082
   metrics:
     tags:
       app: ${spring.application.name}

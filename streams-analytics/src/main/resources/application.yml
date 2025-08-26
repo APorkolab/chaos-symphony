@@ -1,5 +1,5 @@
 server:
-  port: 8087
+  port: 8095
 
 spring:
   jackson:
@@ -27,6 +27,8 @@ spring:
       client.dns.lookup: use_all_dns_ips
 
 management:
+  server:
+    port: 9095
   endpoints:
     web:
       exposure:

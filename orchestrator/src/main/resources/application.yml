@@ -67,6 +67,8 @@ canary:
     percentage: 0.0
 
 management:
+  server:
+    port: 9091
   endpoint:
     env:
       post:

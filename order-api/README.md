@@ -1,15 +1,16 @@
-## `order-api`
-```markdown
-# order-api
-Indítja a rendelést (`/api/orders/start`).  
-Port: 8081 (local profil).
+# Order API Service
 
-### Endpoints
-- `POST /api/orders/start?amount=123` -> generál orderId
-- `POST /api/orders/{orderId}/start?amount=123`
+This service is the main entry point for creating new orders in the Chaos Symphony system.
 
-### Metrikák
-- `/actuator/prometheus` (orders.started)
+## Responsibilities
 
-### CORS demo
-Nyitott CORS (Local UI-hoz), lásd `OrderApiCorsConfig.java`.
+-   **Exposes a REST API:** Provides an endpoint for external clients to submit new orders.
+-   **Initiates the Saga:** Upon receiving a new order request, it saves the order to its local database and creates an `OrderCreated` event.
+-   **Transactional Outbox:** Writes the outgoing `OrderCreated` event to an `order_outbox` table in the same transaction as the `orders` table. This guarantees that the event will be published if and only if the order is successfully saved. Debezium then streams this event to Kafka.
+
+## Endpoints
+
+-   `POST /api/orders/start`: Creates a new order with a random amount and starts the orchestration flow.
+-   `POST /api/orders`: Creates a new order with the given payload.
+-   `GET /api/orders/{id}`: Retrieves the status of a specific order.
+-   `GET /actuator/health`: Standard Spring Boot health check.
