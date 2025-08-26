@@ -14,10 +14,10 @@ public class HealthController {
     }
 
     // This endpoint is created specifically to satisfy the Pact contract test
-    @GetMapping("/api/payments/status/{orderId}")
-    public Map<String, String> getPaymentStatus(@PathVariable String orderId) {
-        // In a real application, this would look up the status from a database or service.
-        // For the contract test, we just need to return a response with the correct structure.
-        return Map.of("orderId", orderId, "status", "CHARGED");
-    }
+    // @GetMapping("/api/payments/status/{orderId}")
+    // public Map<String, String> getPaymentStatus(@PathVariable String orderId) {
+    //     // In a real application, this would look up the status from a database or service.
+    //     // For the contract test, we just need to return a response with the correct structure.
+    //     return Map.of("orderId", orderId, "status", "CHARGED");
+    // }
 }

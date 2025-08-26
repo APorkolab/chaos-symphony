@@ -26,12 +26,12 @@ public class OrderService {
 		order.setTotal(command.amount().setScale(2, RoundingMode.HALF_UP));
 		repository.save(order);
 
-		OrderCreated event = new OrderCreated(
-				order.getId(),
-				order.getTotal(),
-				"HUF");
+		 OrderCreated event = new OrderCreated(
+		 		order.getId().toString(),
+		 		order.getTotal(),
+		 		"HUF");
 
-		producer.fire(event);
+		 producer.fire(event);
 		return order.getId();
 	}
 }
