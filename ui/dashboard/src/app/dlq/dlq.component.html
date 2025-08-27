@@ -6,12 +6,15 @@
     <!-- Topics List -->
     <div class="md:col-span-1 bg-gray-800 p-4 rounded-lg shadow-lg">
       <h2 class="text-xl font-semibold mb-4 border-b border-gray-700 pb-2">DLT Topics</h2>
+
       <div *ngIf="isLoadingTopics" class="text-center">Loading Topics...</div>
+
       <ul *ngIf="!isLoadingTopics">
-        <li *ngFor="let topic of topics"
-            (click)="selectTopic(topic)"
-            class="p-3 my-1 rounded-md cursor-pointer transition-colors"
-            [ngClass]="{'bg-blue-600 text-white': selectedTopic?.name === topic.name, 'hover:bg-gray-700': selectedTopic?.name !== topic.name}">
+        <li *ngFor="let topic of topics" (click)="selectTopic(topic)"
+          class="p-3 my-1 rounded-md cursor-pointer transition-colors" [ngClass]="{
+              'bg-blue-600 text-white': selectedTopic?.name === topic.name,
+              'hover:bg-gray-700': selectedTopic?.name !== topic.name
+            }">
           <div class="flex justify-between items-center">
             <span class="font-mono text-sm">{{ topic.name }}</span>
             <span class="text-xs font-bold bg-gray-600 rounded-full px-2 py-1">
@@ -19,28 +22,34 @@
             </span>
           </div>
         </li>
+
         <li *ngIf="topics.length === 0" class="text-gray-400">No DLTs found.</li>
       </ul>
     </div>
 
     <!-- Messages View -->
     <div class="md:col-span-2 bg-gray-800 p-4 rounded-lg shadow-lg">
+
+      <!-- Nincs választott topik -->
       <div *ngIf="!selectedTopic" class="flex items-center justify-center h-full">
         <p class="text-gray-500">Select a topic to view its messages.</p>
       </div>
 
-      <div *ngIf="selectedTopic">
+      <!-- Van választott topik -->
+      <ng-container *ngIf="selectedTopic as st">
         <div class="flex justify-between items-center mb-4 border-b border-gray-700 pb-2">
-          <h2 class="text-xl font-semibold">Messages in <span class="font-mono text-blue-400">{{ selectedTopic.name }}</span></h2>
-          <div>
-            <button (click)="onReplay(selectedTopic)"
-                    class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded mr-2 disabled:bg-gray-500"
-                    [disabled]="isLoadingTopics || selectedTopic.messageCount === 0">
+          <h2 class="text-lg font-semibold">
+            Messages in <span class="font-mono text-blue-400">{{ st.name }}</span>
+          </h2>
+
+          <div class="flex gap-2">
+            <button (click)="onReplay(st)" class="px-3 py-1 rounded bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
+              [disabled]="isLoadingTopics || (st?.messageCount ?? 0) === 0">
               Replay All
             </button>
-            <button (click)="onPurge(selectedTopic)"
-                    class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded disabled:bg-gray-500"
-                    [disabled]="isLoadingTopics || selectedTopic.messageCount === 0">
+
+            <button (click)="onPurge(st)" class="px-3 py-1 rounded bg-red-600 hover:bg-red-700 disabled:opacity-50"
+              [disabled]="isLoadingTopics || (st?.messageCount ?? 0) === 0">
               Purge All
             </button>
           </div>
@@ -52,12 +61,13 @@
           No messages found in this topic (or unable to peek).
         </div>
 
-        <div class="space-y-2 max-h-96 overflow-y-auto">
+        <div *ngIf="!isLoadingMessages && messages.length > 0" class="space-y-2 max-h-96 overflow-y-auto">
           <div *ngFor="let msg of messages; let i = index" class="bg-gray-900 p-3 rounded">
             <pre class="text-xs text-gray-300 whitespace-pre-wrap break-all"><code>{{ msg }}</code></pre>
           </div>
         </div>
-      </div>
+      </ng-container>
+
     </div>
 
   </div>

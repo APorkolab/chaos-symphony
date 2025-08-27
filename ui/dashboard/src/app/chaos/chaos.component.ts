@@ -1,14 +1,16 @@
 import { Component, OnInit } from '@angular/core';
-import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ChaosService } from './chaos.service';
 import { ChaosRule } from './chaos.model';
 import { finalize } from 'rxjs';
+import { CommonModule } from '@angular/common';
 
 @Component({
-    selector: 'app-chaos',
-    templateUrl: './chaos.component.html',
-    styleUrls: ['./chaos.component.css'],
-    standalone: false
+  selector: 'app-chaos',
+  standalone: true,
+  imports: [CommonModule, FormsModule, ReactiveFormsModule],
+  templateUrl: './chaos.component.html',
+  styleUrls: ['./chaos.component.css']
 })
 export class ChaosComponent implements OnInit {
 

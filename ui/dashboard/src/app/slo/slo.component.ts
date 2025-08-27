@@ -3,12 +3,15 @@ import { SloService } from './slo.service';
 import { Subscription, timer } from 'rxjs';
 import { switchMap } from 'rxjs/operators';
 import { SloMetrics } from './slo.model';
+import { CommonModule } from '@angular/common';
+import { NgxChartsModule, Color, ScaleType } from '@swimlane/ngx-charts';
 
 @Component({
     selector: 'app-slo',
     templateUrl: './slo.component.html',
     styleUrls: ['./slo.component.css'],
-    standalone: false
+    standalone: true,
+    imports: [CommonModule, NgxChartsModule],
 })
 export class SloComponent implements OnInit, OnDestroy {
 
@@ -24,7 +27,10 @@ export class SloComponent implements OnInit, OnDestroy {
   // Chart options
   latencyRefLines = [{ value: this.latencySlo, name: 'SLO' }];
   burnRateRefLines = [{ value: this.burnRateSlo, name: 'SLO' }];
-  colorScheme = {
+  colorScheme: Color = {
+    name: 'custom',
+    selectable: true,
+    group: ScaleType.Ordinal,
     domain: ['#5AA454', '#A10A28', '#C7B42C', '#AAAAAA']
   };
 

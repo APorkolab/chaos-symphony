@@ -1,13 +1,15 @@
 import { Component, OnInit } from '@angular/core';
-import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { OrderService } from './order.service';
 import { finalize } from 'rxjs';
+import { CommonModule } from '@angular/common';
 
 @Component({
-    selector: 'app-orders',
-    templateUrl: './orders.component.html',
-    styleUrls: ['./orders.component.css'],
-    standalone: false
+  selector: 'app-orders',
+  standalone: true,
+  imports: [CommonModule, ReactiveFormsModule],
+  templateUrl: './orders.component.html',
+  styleUrls: ['./orders.component.css']
 })
 export class OrdersComponent implements OnInit {
 

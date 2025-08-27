@@ -2,12 +2,14 @@ import { Component, OnInit } from '@angular/core';
 import { DlqService } from './dlq.service';
 import { DlqTopic, DlqMessage } from './dlq.model';
 import { finalize } from 'rxjs';
+import { CommonModule } from '@angular/common';
 
 @Component({
     selector: 'app-dlq',
     templateUrl: './dlq.component.html',
     styleUrls: ['./dlq.component.css'],
-    standalone: false
+    standalone: true,
+    imports: [CommonModule],
 })
 export class DlqComponent implements OnInit {
 
