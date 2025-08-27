@@ -16,13 +16,7 @@ This project is not just a demo; it's a hands-on lab. It's built to be broken, o
 
 ---
 
-*(Note: The following screenshots could not be generated due to Docker Hub pull rate limits in the automated environment. When run locally, this section would display live dashboards.)*
 
-**Example Distributed Trace:**
-> A screenshot from Jaeger or a similar tool would be displayed here, showing a single `createOrder` request propagating through `order-api`, `orchestrator`, `payment-svc`, and other services, all linked by a single `traceId`.
-
-**Example Grafana SLO Dashboard:**
-> A screenshot of the Grafana dashboard would be here, showing the p95 latency, availability, and DLQ count panels against their defined SLO thresholds.
 
 ---
 
