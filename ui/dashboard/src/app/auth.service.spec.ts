@@ -1,12 +1,18 @@
 import { TestBed } from '@angular/core/testing';
-
 import { AuthService } from './auth.service';
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
 
 describe('AuthService', () => {
   let service: AuthService;
 
   beforeEach(() => {
-    TestBed.configureTestingModule({});
+    TestBed.configureTestingModule({
+      providers: [
+        provideHttpClient(),        // valódi HttpClient DI
+        provideHttpClientTesting(), // mock backend a teszthez
+      ],
+    });
     service = TestBed.inject(AuthService);
   });
 

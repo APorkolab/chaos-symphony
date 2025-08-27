@@ -32,7 +32,6 @@ public class PaymentResultListener {
 
 			log.info("PaymentResult received for orderId={} with status={}", orderId, status);
 
-			// TODO helyett a kidolgozott logika
 			if ("CHARGED".equalsIgnoreCase(status)) {
 				// Sikeres fizetés: továbbküldjük a kérést a készletkezelőnek
 				ObjectNode inventoryPayload = om.createObjectNode()
