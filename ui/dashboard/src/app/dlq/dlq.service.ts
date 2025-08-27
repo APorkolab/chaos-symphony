@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, of } from 'rxjs';
+import { switchMap, map, catchError, forkJoin } from 'rxjs/operators';
 import { DlqTopic, DlqMessage } from './dlq.model';
 
 @Injectable({
@@ -12,10 +13,22 @@ export class DlqService {
   constructor(private http: HttpClient) { }
 
   getDlqTopics(): Observable<DlqTopic[]> {
-    return this.http.get<DlqTopic[]>(`${this.apiUrl}/topics`);
+    return this.http.get<string[]>(`${this.apiUrl}/topics`).pipe(
+      switchMap(topicNames => {
+        if (topicNames.length === 0) {
+          return of([]);
+        }
+        const topicObservables = topicNames.map(name =>
+          this.http.get<number>(`${this.apiUrl}/${name}/count`).pipe(
+            map(count => ({ name, messageCount: count } as DlqTopic)),
+            catchError(() => of({ name, messageCount: -1 } as DlqTopic)) // Handle error case
+          )
+        );
+        return forkJoin(topicObservables);
+      })
+    );
   }
 
-  // The backend endpoint is `/peek`, so we'll use that.
   getMessages(topicName: string, count: number = 10): Observable<DlqMessage[]> {
     return this.http.get<DlqMessage[]>(`${this.apiUrl}/${topicName}/peek?n=${count}`);
   }
@@ -24,9 +37,7 @@ export class DlqService {
     return this.http.post(`${this.apiUrl}/${topicName}/replay`, {});
   }
 
-  retrySelected(topicName: string, messageIds: string[]): Observable<any> {
-    // This assumes a backend endpoint that can accept a list of IDs to retry.
-    // The dlq-admin service would need to be updated to handle this.
-    return this.http.post(`${this.apiUrl}/${topicName}/retry-selected`, { messageIds });
+  purgeTopic(topicName: string): Observable<any> {
+    return this.http.delete(`${this.apiUrl}/${topicName}`);
   }
 }

@@ -4,6 +4,18 @@ spring:
   jackson:
     time-zone: Europe/Budapest
   kafka:
+    topic:
+      inventory:
+        requested: inventory.requested
+        dlt: inventory.requested.dlt
+    group:
+      id:
+        inventory: inventory-requested
+    retry:
+      max-attempts: 5
+      initial-interval-ms: 300
+      multiplier: 2.5
+      max-interval-ms: 3000
     bootstrap-servers: 127.0.0.1:29092
     listener:
       ack-mode: record

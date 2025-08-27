@@ -2,7 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DlqService } from './dlq.service';
 import { DlqTopic, DlqMessage } from './dlq.model';
-import { Observable, of, tap } from 'rxjs';
+import { Observable, of } from 'rxjs';
 import { FormsModule } from '@angular/forms';
 
 @Component({
@@ -15,10 +15,8 @@ import { FormsModule } from '@angular/forms';
 export class DlqComponent implements OnInit {
 
   topics$: Observable<DlqTopic[]> = of([]);
-  messages: DlqMessage[] = [];
   messages$: Observable<DlqMessage[]> = of([]);
   selectedTopic: DlqTopic | null = null;
-  selectedMessages = new Set<string>();
 
   constructor(private dlqService: DlqService) {}
 
@@ -32,45 +30,37 @@ export class DlqComponent implements OnInit {
 
   selectTopic(topic: DlqTopic): void {
     this.selectedTopic = topic;
-    this.selectedMessages.clear();
-    this.messages$ = this.dlqService.getMessages(topic.name).pipe(
-      tap(messages => this.messages = messages)
-    );
+    this.messages$ = this.dlqService.getMessages(topic.name);
   }
 
-  get isAllSelected(): boolean {
-    return this.messages.length > 0 && this.selectedMessages.size === this.messages.length;
+  replayAll(): void {
+    if (!this.selectedTopic) return;
+    this.dlqService.retryAllForTopic(this.selectedTopic.name).subscribe({
+      next: () => {
+        alert('Replay command sent successfully.');
+        this.refreshData();
+      },
+      error: (err) => alert(`Replay failed: ${err.message}`)
+    });
   }
 
-  toggleSelectAll(event: Event): void {
-    const isChecked = (event.target as HTMLInputElement).checked;
-    if (isChecked) {
-      this.messages.forEach(m => this.selectedMessages.add(m.id));
-    } else {
-      this.selectedMessages.clear();
-    }
-  }
-
-  toggleMessageSelection(messageId: string): void {
-    if (this.selectedMessages.has(messageId)) {
-      this.selectedMessages.delete(messageId);
-    } else {
-      this.selectedMessages.add(messageId);
-    }
-  }
-
-  retrySelectedMessages(): void {
-    if (this.selectedTopic && this.selectedMessages.size > 0) {
-      const idsToRetry = Array.from(this.selectedMessages);
-      this.dlqService.retrySelected(this.selectedTopic.name, idsToRetry).subscribe({
+  purge(): void {
+    if (!this.selectedTopic) return;
+    if (confirm(`Are you sure you want to purge all messages from ${this.selectedTopic.name}? This action cannot be undone.`)) {
+      this.dlqService.purgeTopic(this.selectedTopic.name).subscribe({
         next: () => {
-          console.log(`Retry successful for ${idsToRetry.length} messages in ${this.selectedTopic?.name}`);
-          // Refresh data
-          this.selectTopic(this.selectedTopic!); // Reload messages for the current topic
-          this.loadTopics(); // Refresh topic counts
+          alert('Purge command sent successfully.');
+          this.refreshData();
         },
-        error: (err) => console.error('Retry failed', err)
+        error: (err) => alert(`Purge failed: ${err.message}`)
       });
+    }
+  }
+
+  private refreshData(): void {
+    this.loadTopics();
+    if (this.selectedTopic) {
+      this.selectTopic(this.selectedTopic);
     }
   }
 }

@@ -7,49 +7,60 @@ import org.apache.kafka.common.utils.Bytes;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.Topology;
 import org.apache.kafka.streams.kstream.*;
-import org.apache.kafka.streams.state.KeyValueStore;
+import org.apache.kafka.streams.state.WindowStore;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+
+import java.time.Duration;
 
 @Configuration
 public class TopologyConfig {
 
-	private static final ObjectMapper MAPPER = new ObjectMapper();
+    private static final ObjectMapper MAPPER = new ObjectMapper();
+    public static final String STATUS_COUNT_STORE_1H = "status-count-store-1h";
+    public static final String STATUS_COUNT_STORE_6H = "status-count-store-6h";
 
-	@Bean
-	public Topology topology() {
-		StreamsBuilder b = new StreamsBuilder();
+    @Bean
+    public Topology topology() {
+        StreamsBuilder builder = new StreamsBuilder();
 
-		KStream<String, String> payments = b.stream("payment.result", Consumed.with(Serdes.String(), Serdes.String()));
+        KStream<String, String> paymentResults = builder.stream("payment.result", Consumed.with(Serdes.String(), Serdes.String()));
 
-		Materialized<String, Long, KeyValueStore<Bytes, byte[]>> mat = Materialized
-				.<String, Long, KeyValueStore<Bytes, byte[]>>as("counts-store")
-				.withKeySerde(Serdes.String())
-				.withValueSerde(Serdes.Long());
+        KGroupedStream<String, String> groupedByStatus = paymentResults
+                .mapValues(TopologyConfig::statusFromEnvelope)
+                .groupBy((key, status) -> status, Grouped.with(Serdes.String(), Serdes.String()));
 
-		KTable<String, Long> byStatus = payments
-				.mapValues(TopologyConfig::statusFromEnvelope)
-				.groupBy((k, status) -> status, Grouped.with(Serdes.String(), Serdes.String()))
-				.count(mat);
+        // Non-windowed count for existing tests
+        groupedByStatus
+                .count()
+                .toStream()
+                .to("analytics.payment.status.count", Produced.with(Serdes.String(), Serdes.Long()));
 
-		byStatus.toStream()
-				.to("analytics.payment.status.count", Produced.with(Serdes.String(), Serdes.Long()));
+        // 1-hour windowed count
+        groupedByStatus
+                .windowedBy(TimeWindows.of(Duration.ofHours(1)))
+                .count(Materialized.<String, Long, WindowStore<Bytes, byte[]>>as(STATUS_COUNT_STORE_1H)
+                        .withKeySerde(Serdes.String()).withValueSerde(Serdes.Long()));
 
-		return b.build();
-	}
+        // 6-hour windowed count
+        groupedByStatus
+                .windowedBy(TimeWindows.of(Duration.ofHours(6)))
+                .count(Materialized.<String, Long, WindowStore<Bytes, byte[]>>as(STATUS_COUNT_STORE_6H)
+                        .withKeySerde(Serdes.String()).withValueSerde(Serdes.Long()));
 
-	private static String statusFromEnvelope(String json) {
-		try {
-			JsonNode root = MAPPER.readTree(json);
-			JsonNode payloadNode = root.path("payload");
+        return builder.build();
+    }
 
-			// a payload lehet TEXT (escape-elt JSON) vagy objektum
-			String payloadStr = payloadNode.isTextual() ? payloadNode.asText() : payloadNode.toString();
-			JsonNode payload = MAPPER.readTree(payloadStr);
-
-			return payload.path("status").asText("UNKNOWN");
-		} catch (Exception e) {
-			return "UNKNOWN";
-		}
-	}
+    private static String statusFromEnvelope(String json) {
+        try {
+            // This logic assumes the original envelope structure from the spec
+            JsonNode payload = MAPPER.readTree(json).path("payload");
+            if (payload.isTextual()) {
+                payload = MAPPER.readTree(payload.asText());
+            }
+            return payload.path("status").asText("UNKNOWN");
+        } catch (Exception e) {
+            return "UNKNOWN";
+        }
+    }
 }

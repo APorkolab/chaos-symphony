@@ -38,6 +38,7 @@
     <module>dlq-admin</module>
     <module>streams-analytics</module>
     <module>order-api</module>
+    <module>gameday-svc</module>
   </modules>
   <!-- Közös verziószabályozás: ha kell extra lib, ide tedd -->
 <dependencyManagement>

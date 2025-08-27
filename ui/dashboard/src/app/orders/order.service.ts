@@ -17,36 +17,8 @@ export class OrderService {
   }
 
   getOrderHistory(id: string): Observable<OrderHistory> {
-    // TODO: A real implementation would fetch this from a dedicated history endpoint.
-    // For now, we simulate a realistic history timeline on the frontend
-    // to demonstrate the UI component's functionality.
-    return this.http.get<Order>(`${this.apiUrl}/${id}`).pipe(
-      map(order => {
-        const historyEvents = [];
-        const createdTime = new Date(order.createdAt);
-
-        historyEvents.push({ status: OrderStatus.NEW, timestamp: order.createdAt });
-
-        if ([OrderStatus.PAID, OrderStatus.ALLOCATED, OrderStatus.SHIPPED].includes(order.status)) {
-          historyEvents.push({ status: OrderStatus.PAID, timestamp: new Date(createdTime.getTime() + 1000).toISOString() });
-        }
-        if ([OrderStatus.ALLOCATED, OrderStatus.SHIPPED].includes(order.status)) {
-          historyEvents.push({ status: OrderStatus.ALLOCATED, timestamp: new Date(createdTime.getTime() + 2000).toISOString() });
-        }
-        if (order.status === OrderStatus.SHIPPED) {
-          historyEvents.push({ status: OrderStatus.SHIPPED, timestamp: new Date(createdTime.getTime() + 3000).toISOString() });
-        }
-        if (order.status === OrderStatus.FAILED) {
-            historyEvents.push({ status: OrderStatus.FAILED, timestamp: new Date(createdTime.getTime() + 4000).toISOString() });
-        }
-
-        const history: OrderHistory = {
-          ...order,
-          history: historyEvents.reverse(), // Show most recent first
-        };
-        return history;
-      })
-    );
+    const historyUrl = `http://localhost:8095/api/orders/${id}/history`;
+    return this.http.get<OrderHistory>(historyUrl);
   }
 
   createOrder(amount: number): Observable<any> {

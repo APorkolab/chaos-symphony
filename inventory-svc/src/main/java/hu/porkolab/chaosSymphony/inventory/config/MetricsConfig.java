@@ -1,4 +1,4 @@
-package hu.porkolab.chaosSymphony.payment.config;
+package hu.porkolab.chaosSymphony.inventory.config;
 
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -9,23 +9,14 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class MetricsConfig {
 
-    public static final String PAYMENTS_PROCESSED_COUNTER = "payments.processed";
+    public static final String MESSAGES_PROCESSED_COUNTER = "inventory.messages.processed";
     public static final String DLT_MESSAGES_TOTAL_COUNTER = "dlt.messages.total";
     public static final String PROCESSING_TIME_TIMER = "processing.time.ms";
 
     @Bean
-    public Counter paymentsProcessedMain(MeterRegistry registry) {
-        return Counter.builder(PAYMENTS_PROCESSED_COUNTER)
-                .tag("channel", "main")
-                .description("The number of payment requests processed by the main consumer.")
-                .register(registry);
-    }
-
-    @Bean
-    public Counter paymentsProcessedCanary(MeterRegistry registry) {
-        return Counter.builder(PAYMENTS_PROCESSED_COUNTER)
-                .tag("channel", "canary")
-                .description("The number of payment requests processed by the canary consumer.")
+    public Counter messagesProcessed(MeterRegistry registry) {
+        return Counter.builder(MESSAGES_PROCESSED_COUNTER)
+                .description("The number of inventory requests processed.")
                 .register(registry);
     }
 
@@ -40,7 +31,7 @@ public class MetricsConfig {
     public Timer processingTime(MeterRegistry registry) {
         return Timer.builder(PROCESSING_TIME_TIMER)
                 .description("Measures the end-to-end processing time of a message.")
-                .publishPercentileHistogram()
+                .publishPercentileHistogram() // Enables p95, p99, etc.
                 .register(registry);
     }
 }

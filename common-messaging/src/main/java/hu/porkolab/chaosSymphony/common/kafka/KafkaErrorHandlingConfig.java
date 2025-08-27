@@ -10,6 +10,7 @@ import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.*;
 import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.kafka.support.ExponentialBackOffWithMaxRetries;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
 import java.util.HashMap;
 import java.util.Map;
@@ -64,6 +65,7 @@ public DefaultErrorHandler errorHandler(
 }
 
 @Bean(name = "kafkaListenerContainerFactory")
+@ConditionalOnMissingBean(name = "kafkaListenerContainerFactory")
 public ConcurrentKafkaListenerContainerFactory<String, String> kafkaListenerContainerFactory(
         ConsumerFactory<String, String> cf,
         DefaultErrorHandler errorHandler) {

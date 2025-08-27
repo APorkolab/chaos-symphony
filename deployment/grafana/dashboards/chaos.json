@@ -60,7 +60,20 @@
           "legendFormat": "Burn Rate"
         }
       ],
-      "gridPos": { "h": 4, "w": 8, "x": 16, "y": 4 }
+      "gridPos": { "h": 4, "w": 4, "x": 16, "y": 4 }
+    },
+    {
+      "id": 6,
+      "title": "SLO Burn Rate (6h)",
+      "type": "gauge",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "orders_slo_burn_rate{window=\"6h\"}",
+          "legendFormat": "Burn Rate 6h"
+        }
+      ],
+      "gridPos": { "h": 4, "w": 4, "x": 20, "y": 4 }
     },
     {
       "id": 4,

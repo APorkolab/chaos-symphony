@@ -1,146 +1,106 @@
-# Chaos Symphony – Event-Driven Microservices
+# Chaos Symphony
 
-[![CI Build and Test](https://github.com/APorkolab/chaos-symphony/actions/workflows/ci.yml/badge.svg)](https://github.com/APorkolab/chaos-symphony/actions/workflows/ci.yml)
-[![License](https://img.shields.io/badge/license-MIT-informational.svg)](LICENSE)
+Chaos Symphony is a fictitious, event-driven, microservices-based system designed to demonstrate and teach advanced software engineering patterns. It simulates a simple payment processing workflow but focuses heavily on resilience, observability, and automated chaos engineering to ensure the system can withstand real-world failures.
 
-An enterprise-grade, event-driven microservices project built with **Spring Boot 3** and **Kafka**. It demonstrates the **Saga and Transactional Outbox patterns** for managing distributed workflows, complete with a built-in chaos injector, deep observability, an Angular 17 UI, and a Dead-Letter Queue (DLQ) replay mechanism.
+This project is not just a demo; it's a hands-on lab. It's built to be broken, observed, and improved. The core philosophy is that a system's true strength is revealed not when it's running perfectly, but when it's gracefully handling failures.
 
-This project isn't just a simple CRUD application; it's an exploration of how to build, operate, and trust a complex, distributed system designed to withstand failure.
+## Core Architectural Principles
 
-## 🎯 End-to-End SLOs & Evidence
+The design of Chaos Symphony is guided by a set of principles that prioritize robustness and operational maturity over simplistic, "happy-path" implementations.
 
-| Metric (End-to-End) | Target | Evidence |
+*   **Event-Driven Architecture (EDA):** The system is built around asynchronous message passing using Apache Kafka. This decouples services, improves scalability, and allows for patterns like the Outbox pattern to ensure data consistency.
+*   **Resilience by Design:** We assume failures *will* happen. Services are designed with patterns like Idempotent Consumers, Dead-Letter Queues (DLQs), and automated retries to handle transient and permanent failures gracefully.
+*   **Deep Observability:** You can't fix what you can't see. The system is instrumented with Prometheus for metrics, Loki for logs, and Tempo for traces. A pre-configured Grafana instance provides a unified view into the system's health, including Service-Level Objective (SLO) dashboards.
+*   **Chaos Engineering as a First-Class Citizen:** The system includes a dedicated `chaos-svc` and `gameday-svc` to programmatically inject failures (e.g., latency, errors) and run automated experiments. This allows us to proactively find and fix weaknesses before they impact users.
+*   **UI-Facing Service Endpoints:** While not a traditional Backend-for-Frontend (BFF), the architecture provides dedicated API endpoints tailored for UI consumption. For most operations, the UI interacts directly with the relevant service (e.g., `gameday-svc`). For complex, aggregated data views, such as the SLO dashboard, the `streams-analytics` service provides a specific endpoint to simplify data retrieval for the client.
+
+## Key Patterns Implemented
+
+This project serves as a practical example of several critical patterns for building distributed systems.
+
+| Pattern | Implementation | Business Value |
 | :--- | :--- | :--- |
-| Order → Ship p95 | < 2 seconds | Grafana Dashboard |
-| DLQ Rate | < 0.3% / day | Grafana Dashboard, DLQ UI |
-| Availability | ≥ 99.5% | Prometheus `up` metric |
+| **Saga Pattern** | The payment workflow is orchestrated across the `orchestrator`, `payment-svc`, `inventory-svc`, and `shipping-svc` modules via Kafka messages. | Ensures a long-running business process can complete or be safely compensated across multiple services without using brittle, two-phase commits. |
+| **Outbox Pattern** | The `orchestrator` writes business data and outbound events to its database in a single transaction. A Debezium CDC connector then publishes these events to Kafka. | Guarantees "at-least-once" delivery and prevents the classic "dual-write" problem, ensuring state changes and events are never out of sync. |
+| **Idempotent Consumer** | The `payment-svc` tracks processed message IDs in its database. | Prevents duplicate processing of messages, which is critical in "at-least-once" delivery systems. This avoids bugs like double-charging a customer. |
+| **Dead-Letter Queue (DLQ)** | The `payment-svc` uses a topic-based DLQ with an exponential backoff retry mechanism, managed by Spring Kafka. Unrecoverable messages are sent to a final `*.dlt` topic. | Protects the system from "poison pill" messages. It isolates failing messages for later analysis and reprocessing without halting the entire system. |
+| **Windowed SLO Monitoring** | The `streams-analytics` service uses Kafka Streams to calculate SLO metrics (e.g., p95 latency, error rate) over rolling time windows. | Provides a real-time, actionable view of system health against defined business objectives, enabling proactive incident response. |
+| **Automated GameDay** | The `gameday-svc` provides an API to trigger a pre-defined chaos experiment against the `payment-svc` while monitoring the system's SLOs. | Moves chaos engineering from a manual, periodic exercise to an automated, repeatable practice, continuously building confidence in the system's resilience. |
 
----
-
-**Trace Screenshot:**
-*[A screenshot of a distributed trace from `order-api` to `shipping-svc` should be placed here after running the system.]*
-
----
-
-**Grafana Dashboard Screenshot:**
-*[A screenshot of the main Grafana dashboard showing p95 latency, DLQ count, and SLO burn rate should be placed here after running the system.]*
-
----
-
-## ✨ Key Features
-
-  * **Transactional Outbox Pattern**: Guarantees reliable event publishing using **Debezium** for Change Data Capture (CDC).
-  * **Idempotent Consumers with Retry/DLT**: Every Kafka consumer is idempotent and leverages a centralized, exponential backoff retry mechanism with a Dead-Letter Topic for unrecoverable messages.
-  * **Saga Orchestration Pattern**: Manages the `Order → Payment → Inventory → Shipping` workflow using a central orchestrator.
-  * **Chaos Engineering Injector**: A dedicated service to proactively test system resilience by introducing failures at runtime.
-  * **Deep Observability**: A full stack with metrics from **Micrometer**, logs, and traces collected by **OpenTelemetry** and visualized in **Prometheus** & **Grafana**.
-  * **Angular 17 Dashboard**: A modern UI for visualizing orders, managing DLQs, and controlling the chaos injector.
-  * **Fully Containerized**: The entire infrastructure is managed with a single **Docker Compose** file for one-command startup.
-
-## 🏛️ Architecture
-
-The system uses a central orchestrator to manage the Saga workflow. The `order-api` initiates the process by writing to its local `order_outbox` table. Debezium captures this change and publishes it reliably to Kafka, triggering the first step of the Saga.
-
-```mermaid
-flowchart LR
-  subgraph Transactional Boundary
-    A[order-api] -- 1. Writes to Outbox Table --> DB[(Postgres)]
-  end
-  subgraph Event Stream
-    DB -- 2. Debezium CDC --> K(Kafka)
-  end
-
-  K -- payment.requested --> P[payment-svc]
-  P -- payment.result --> O[orchestrator]
-  O -- inventory.requested --> I[inventory-svc]
-  I -- inventory.result --> O
-  O -- shipping.requested --> S[shipping-svc]
-  S -- shipping.result --> O
-
-  subgraph Analytics
-    O -- Events --> AN[streams-analytics]
-  end
-
-  classDef svc fill:#0f172a,stroke:#94a3b8,color:#e2e8f0;
-  class A,P,O,I,S,AN svc
-```
-
-## 🚀 Getting Started
-
-The entire system is fully containerized. The backend services and infrastructure run in Docker, while the UI must be run locally.
+## Running the System
 
 **Prerequisites:**
 *   Docker and Docker Compose
-*   Node.js 20+ and npm
+*   Maven
+*   Java 17
 
-**Step 1: Start Backend & Infrastructure**
-
-From the project root directory, run:
+**1. Build the Project:**
+First, build all the Java modules using Maven. This will also run the Pact contract tests.
 ```bash
-cd deployment
-docker compose up --build -d
+./mvnw clean install
 ```
-This command builds and starts all Java services and the required infrastructure (Kafka, Postgres, Debezium, etc.).
 
-**Step 2: Start the Frontend UI**
-
-In a separate terminal, navigate to the UI directory and start the Angular development server:
+**2. Start the Infrastructure & Services:**
+Use Docker Compose to bring up the entire system. This includes the application services, Kafka, databases, and the observability stack.
 ```bash
-# From the project root
-cd ui/dashboard
-npm install
-npm start
+docker-compose up -d
 ```
-The UI will be available at `http://localhost:4200`.
 
-**Step 3: Configure Debezium CDC**
+**3. Accessing the System:**
 
-After the services are running, the Debezium connector for the `orders` service must be registered. A script is provided for convenience.
-```bash
-# From the project root, run:
-./scripts/bootstrap_cdc.sh
-```
-You can check the status of all running containers with `docker compose ps` from within the `deployment` directory.
+*   **Angular UI:** [http://localhost:4200](http://localhost:4200)
+    *   This is the main interface for interacting with the system.
+*   **Grafana:** [http://localhost:3000](http://localhost:3000) (admin/admin)
+    *   Explore the pre-built "Chaos Symphony SLO" dashboard.
+*   **Prometheus:** [http://localhost:9090](http://localhost:9090)
+*   **Kafka UI (Kafdrop):** [http://localhost:9000](http://localhost:9000)
 
-## 📊 Observability Stack
+## How to Demonstrate the Features
 
-Explore the running system using these tools:
-  * **Application UI**: `http://localhost:4200`
-  * **Grafana**: `http://localhost:3000` (admin/admin)
-      * *Import the dashboard from `docs/grafana/orders-overview.json` to get started.*
-  * **Prometheus**: `http://localhost:9090`
-  * **Kafdrop**: `http://localhost:9000` (Kafka topic browser)
+This section provides a script for a live demonstration of the system's capabilities.
 
-## 🎬 5-Minute Demo Script
+#### Demo 1: The "Happy Path" Workflow
 
-1.  **Open the UI** at `http://localhost:4200` and navigate to the **SLO Panel**. Note that all metrics are green.
-2.  Navigate to the **Orders** page and create a new order. Watch the timeline update from `NEW` to `PAID` to `ALLOCATED` to `SHIPPED`.
-3.  Go to the **Chaos Panel**. Enable `DELAY` and `DUPLICATE` failures.
-4.  Create another order. Observe the **SLO Panel** p95 latency metric turning red and the DLQ count increasing.
-5.  Navigate to the **DLQ** page. You should see the failed message. Select it and click "Retry".
-6.  The order timeline on the **Orders** page should now complete successfully.
+1.  **Open the UI:** Navigate to [http://localhost:4200](http://localhost:4200).
+2.  **Start a Workflow:** In the "Orchestrator" panel, enter a unique `correlationId` (e.g., `test-1`) and a payload (e.g., `{"amount": 100}`). Click "Start Workflow".
+3.  **Observe:** Watch the logs in the UI. You'll see the `orchestrator` start the process and the `payment-svc` process the payment.
+4.  **Check Kafka:** Open Kafdrop ([http://localhost:9000](http://localhost:9000)) to see the messages flowing through the `payment.requested` and other topics.
 
----
+#### Demo 2: Failure, DLT, and Manual Recovery
 
-## ✅ Why This Is Not "Just Another CRUD App"
+1.  **Inject a Failure:** In the UI's "Payment Service" panel, use the "Set Response Type" feature to make the service return an `ERROR`.
+2.  **Start a New Workflow:** Go back to the "Orchestrator" panel and start a new workflow with a different `correlationId` (e.g., `test-fail-1`).
+3.  **Observe the Failure:** The `payment-svc` will fail to process the message. After a few automated retries (configured with exponential backoff), Spring Kafka will give up and send the message to the `payment.requested.dlt` topic.
+4.  **View the DLT:** In the UI, navigate to the "Dead Letter Queue" view. You will see the failed message here.
+5.  **Fix the System:** Go back to the "Payment Service" panel and set its response type back to `SUCCESS`.
+6.  **Recover:** In the "Dead Letter Queue" view, click "Replay All". This will move the message from the DLT back to the main topic. The `payment-svc` will now successfully process it, and the workflow will complete.
 
-This project is a curated collection of patterns for building resilient, operable, and trustworthy distributed systems.
+#### Demo 3: Automated GameDay and SLO Monitoring
 
-*   **SAGA Pattern:** Manages distributed transactions without error-prone two-phase commits.
-*   **CDC / Outbox:** Ensures events are never lost, even if the message broker is down.
-*   **Idempotency & DLT:** Guarantees that messages are processed exactly once, with a safety net for failures.
-*   **Replayability:** The DLQ UI allows for manual intervention and re-processing, a critical operational feature.
-*   **Proactive Chaos Testing:** The built-in chaos injector and GameDay automation prove the system's resilience, rather than just assuming it.
-*   **Measurable SLOs:** The system is built around Service Level Objectives, with dashboards to prove compliance.
+1.  **Open Grafana:** Open the "Chaos Symphony SLO" dashboard in Grafana ([http://localhost:3000](http://localhost:3000)). You should see green SLOs.
+2.  **Start the GameDay:** In the UI's "GameDay Service" panel, click "Start Experiment".
+3.  **Observe the Chaos:** The `gameday-svc` will call the `chaos-svc` to inject latency into the `payment-svc`.
+4.  **Watch the SLOs:** Switch back to Grafana. You will see the `p95 latency` metric increase. As it crosses the SLO threshold, the panel will turn red. The "SLO Burn Rate" panel will also start to increase, showing you how quickly you are consuming your error budget.
+5.  **View Live SLOs in UI:** The "SLO Status" panel in the main UI is powered by a BFF endpoint and will also reflect the degraded performance in real-time.
+6.  **Automatic Resolution:** The chaos experiment is time-boxed. After it ends, the latency will return to normal, and the SLOs in Grafana will turn green again. This demonstrates the system's ability to self-heal after a transient failure.
 
-## 📋 Anti-CRUD Checklist
+## Anti-CRUD Checklist
 
-- [x] **SAGA state machine diagram** (see Architecture)
-- [ ] Event schemas versioned
-- [x] **Idempotency store + message-key strategy** implemented in all consumers
-- [x] **DLQ policy (exponential backoff) + manual retry UI** (backend and UI skeleton are ready)
-- [ ] OTel trace screenshot + Grafana SLO panel
-- [x] **Testcontainers e2e in CI** (CI pipeline is now configured to run them)
-- [ ] Perf baseline grafikonok (throughput, lag, p95)
-- [ ] RUNBOOK (3 tipikus hiba, lépésenkénti elhárítás)
-- [x] **Outbox/CDC + Replay + GameDay pipeline** (foundations are laid: Outbox is solid, Replay via DLQ is possible, GameDay can be built on the chaos-svc)
+This checklist tracks the project's progress in moving beyond simple CRUD operations to a more robust, message-driven architecture.
+
+- [x] The system is event-driven.
+- [x] At least one service uses the Outbox pattern. (`orchestrator`)
+- [x] At least one service has an Idempotent Consumer. (`payment-svc`)
+- [x] The system uses a message broker (Kafka).
+- [x] The system includes consumer-driven contract tests (Pact).
+- [x] The system is observable (logs, metrics, traces).
+- [x] The system has defined SLOs.
+- [x] The system includes a automated chaos engineering experiment.
+- [ ] The project has a `RUNBOOK.md`.
+- [x] The system can be deployed and run with a single command (`docker-compose up`).
+- [ ] The system has end-to-end tests that validate a full business workflow.
+- [ ] The UI is served by a Backend-for-Frontend (BFF).
+- [x] The system includes a Dead-Letter Queue mechanism.
+- [x] The DLT mechanism includes an automated retry policy (e.g., exponential backoff).
+- [x] The system allows for manual DLT reprocessing.
+- [x] The system has a dedicated UI for operational tasks (like DLT management).

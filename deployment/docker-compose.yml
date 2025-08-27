@@ -195,6 +195,19 @@ services:
     ports: ["8088:8088"]
     networks: [chaos-net]
 
+  gameday-svc:
+    build: { context: ../gameday-svc }
+    depends_on: { chaos-svc: { condition: service_started }, otel-agent-downloader: { condition: service_completed_successfully } }
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - OTEL_SERVICE_NAME=gameday-svc
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
+      - JAVA_TOOL_OPTIONS=-javaagent:/otel/opentelemetry-javaagent.jar
+      - CHAOS_SVC_URL=http://chaos-svc:8088
+    volumes: [otel-agent:/otel]
+    ports: ["8099:8080"]
+    networks: [chaos-net]
+
   kafdrop:
     image: obsidiandynamics/kafdrop:latest
     depends_on: [kafka]
@@ -225,3 +238,6 @@ services:
       - GF_SECURITY_ADMIN_PASSWORD=admin
     ports: ["${GRAFANA_PORT:-3000}:3000"]
     networks: [chaos-net]
+    volumes:
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+      - ./grafana/provisioning/dashboards.yml:/etc/grafana/provisioning/dashboards/main.yml

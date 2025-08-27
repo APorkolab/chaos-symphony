@@ -7,6 +7,7 @@ import hu.porkolab.chaosSymphony.common.EventEnvelope;
 import hu.porkolab.chaosSymphony.common.idemp.IdempotencyStore;
 import hu.porkolab.chaosSymphony.payment.store.PaymentStatusStore;
 import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Timer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -15,77 +16,98 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class PaymentRequestedListener {
 
-	private final PaymentResultProducer producer;
-	private final IdempotencyStore idempotencyStore;
-	private final PaymentStatusStore paymentStatusStore;
-	private final Counter paymentsProcessedMain;
-	private final Counter paymentsProcessedCanary;
-	private final ObjectMapper om = new ObjectMapper();
+    private final PaymentResultProducer producer;
+    private final IdempotencyStore idempotencyStore;
+    private final PaymentStatusStore paymentStatusStore;
+    private final Counter paymentsProcessedMain;
+    private final Counter paymentsProcessedCanary;
+    private final Timer processingTime;
+    private final ObjectMapper om = new ObjectMapper();
 
-	@KafkaListener(topics = "${kafka.topic.payment.requested}", groupId = "${kafka.group.id.payment}")
-	@Transactional
-	public void onPaymentRequested(ConsumerRecord<String, String> rec) throws Exception {
-		paymentsProcessedMain.increment();
-		if (!idempotencyStore.markIfFirst(rec.key())) {
-			log.warn("Duplicate message detected, skipping: {}", rec.key());
-			return;
-		}
+    @KafkaListener(topics = "${kafka.topic.payment.requested}", groupId = "${kafka.group.id.payment}")
+    @Transactional
+    public void onPaymentRequested(ConsumerRecord<String, String> rec) throws Exception {
+        long startTime = System.nanoTime();
+        try {
+            paymentsProcessedMain.increment();
+            if (!idempotencyStore.markIfFirst(rec.key())) {
+                log.warn("Duplicate message detected, skipping: {}", rec.key());
+                return;
+            }
 
-		EventEnvelope env = EnvelopeHelper.parse(rec.value());
-		String orderId = env.getOrderId();
+            EventEnvelope env = EnvelopeHelper.parse(rec.value());
+            String orderId = env.getOrderId();
 
-		JsonNode msg = om.readTree(env.getPayload());
-		double amount = msg.path("amount").asDouble();
+            JsonNode msg = om.readTree(env.getPayload());
+            double amount = msg.path("amount").asDouble();
 
-		// Simulate payment processing
-		boolean success = ThreadLocalRandom.current().nextDouble() < 0.9;
-		String status = success ? "CHARGED" : "CHARGE_FAILED";
-		paymentStatusStore.save(orderId, status);
+            // Simulate payment processing
+            boolean success = ThreadLocalRandom.current().nextDouble() < 0.9;
+            if (!success) {
+                throw new IllegalStateException("Payment processing failed for order: " + orderId);
+            }
 
-		String resultPayload = om.createObjectNode()
-				.put("orderId", orderId)
-				.put("status", status)
-				.put("amount", amount)
-				.toString();
+            String status = "CHARGED";
+            paymentStatusStore.save(orderId, status);
 
-		log.info("Payment processed for orderId={}, status: {}", orderId, status);
-		producer.sendResult(orderId, resultPayload);
-	}
+            String resultPayload = om.createObjectNode()
+                    .put("orderId", orderId)
+                    .put("status", status)
+                    .put("amount", amount)
+                    .toString();
 
-	@KafkaListener(topics = "${kafka.topic.payment.requested.canary}", groupId = "${kafka.group.id.payment.canary}")
-	@Transactional
-	public void onPaymentRequestedCanary(ConsumerRecord<String, String> rec) throws Exception {
-		paymentsProcessedCanary.increment();
-		log.info("[CANARY] Received payment request for key: {}", rec.key());
-		if (!idempotencyStore.markIfFirst(rec.key())) {
-			log.warn("[CANARY] Duplicate message detected, skipping: {}", rec.key());
-			return;
-		}
+            log.info("Payment processed for orderId={}, status: {}", orderId, status);
+            producer.sendResult(orderId, resultPayload);
+        } finally {
+            processingTime.record(System.nanoTime() - startTime, TimeUnit.NANOSECONDS);
+        }
+        ;
+    }
 
-		EventEnvelope env = EnvelopeHelper.parse(rec.value());
-		String orderId = env.getOrderId();
+    @KafkaListener(topics = "${kafka.topic.payment.requested.canary}", groupId = "${kafka.group.id.payment.canary}")
+    @Transactional
+    public void onPaymentRequestedCanary(ConsumerRecord<String, String> rec) throws Exception {
+        long startTime = System.nanoTime();
+        try {
+            paymentsProcessedCanary.increment();
+            log.info("[CANARY] Received payment request for key: {}", rec.key());
+            if (!idempotencyStore.markIfFirst(rec.key())) {
+                log.warn("[CANARY] Duplicate message detected, skipping: {}", rec.key());
+                return;
+            }
 
-		JsonNode msg = om.readTree(env.getPayload());
-		double amount = msg.path("amount").asDouble();
+            EventEnvelope env = EnvelopeHelper.parse(rec.value());
+            String orderId = env.getOrderId();
 
-		// Simulate payment processing
-		boolean success = ThreadLocalRandom.current().nextDouble() < 0.9;
-		String status = success ? "CHARGED" : "CHARGE_FAILED";
-		paymentStatusStore.save(orderId, status);
+            JsonNode msg = om.readTree(env.getPayload());
+            double amount = msg.path("amount").asDouble();
 
-		String resultPayload = om.createObjectNode()
-				.put("orderId", orderId)
-				.put("status", status)
-				.put("amount", amount)
-				.toString();
+            // Simulate payment processing
+            boolean success = ThreadLocalRandom.current().nextDouble() < 0.9;
+            if (!success) {
+                throw new IllegalStateException("[CANARY] Payment processing failed for order: " + orderId);
+            }
 
-		log.info("[CANARY] Payment processed for orderId={}, status: {}", orderId, status);
-		producer.sendResult(orderId, resultPayload);
-	}
+            String status = "CHARGED";
+            paymentStatusStore.save(orderId, status);
+
+            String resultPayload = om.createObjectNode()
+                    .put("orderId", orderId)
+                    .put("status", status)
+                    .put("amount", amount)
+                    .toString();
+
+            log.info("[CANARY] Payment processed for orderId={}, status: {}", orderId, status);
+            producer.sendResult(orderId, resultPayload);
+        } finally {
+            processingTime.record(System.nanoTime() - startTime, TimeUnit.NANOSECONDS);
+        }
+    }
 }

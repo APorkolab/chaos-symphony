@@ -9,6 +9,7 @@ spring:
       payment:
         requested: payment.requested
         requested.canary: payment.requested.canary
+        dlt: payment.requested.dlt
     group:
       id:
         payment: payment-requested
@@ -93,4 +94,3 @@ chaos:
     strategy: fixed
     max-attempts: 2
     initial-interval-ms: 200
-

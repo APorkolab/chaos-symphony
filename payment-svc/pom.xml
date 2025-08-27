@@ -53,6 +53,18 @@
   <build>
     <plugins>
       <plugin><groupId>org.springframework.boot</groupId><artifactId>spring-boot-maven-plugin</artifactId></plugin>
+      <plugin>
+        <groupId>au.com.dius.pact.provider</groupId>
+        <artifactId>pact-jvm-provider-maven</artifactId>
+        <version>${pact.version}</version>
+        <configuration>
+          <serviceProviders>
+            <serviceProvider>
+              <name>payment-svc</name>
+            </serviceProvider>
+          </serviceProviders>
+        </configuration>
+      </plugin>
     </plugins>
   </build>
 </project>

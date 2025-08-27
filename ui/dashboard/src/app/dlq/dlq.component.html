@@ -26,28 +26,23 @@
       <div *ngIf="selectedTopic; else noTopicSelected">
         <div class="flex justify-between items-center mb-4">
           <h2 class="text-xl font-semibold">Messages in <span class="font-mono text-blue-400">{{ selectedTopic.name }}</span></h2>
-          <button
-            (click)="retrySelectedMessages()"
-            [disabled]="selectedMessages.size === 0"
-            class="font-bold py-2 px-4 rounded-md transition duration-300"
-            [ngClass]="{
-              'bg-green-600 hover:bg-green-700 text-white': selectedMessages.size > 0,
-              'bg-gray-600 text-gray-400 cursor-not-allowed': selectedMessages.size === 0
-            }">
-            Retry Selected ({{ selectedMessages.size }})
-          </button>
+          <div class="space-x-2">
+            <button
+              (click)="replayAll()"
+              class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-md transition duration-300">
+              Replay All
+            </button>
+            <button
+              (click)="purge()"
+              class="bg-red-700 hover:bg-red-800 text-white font-bold py-2 px-4 rounded-md transition duration-300">
+              Purge Topic
+            </button>
+          </div>
         </div>
         <div class="overflow-x-auto">
           <table class="min-w-full text-left">
             <thead class="bg-gray-700">
               <tr>
-                <th class="p-3 w-12">
-                  <input
-                    type="checkbox"
-                    [checked]="isAllSelected"
-                    (change)="toggleSelectAll($event)"
-                    class="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-600 ring-offset-gray-800 focus:ring-2">
-                </th>
                 <th class="p-3">Timestamp</th>
                 <th class="p-3">Headers</th>
                 <th class="p-3">Payload</th>
@@ -55,13 +50,6 @@
             </thead>
             <tbody>
               <tr *ngFor="let message of messages$ | async" class="border-b border-gray-700">
-                <td class="p-3 align-top">
-                  <input
-                    type="checkbox"
-                    [checked]="selectedMessages.has(message.id)"
-                    (change)="toggleMessageSelection(message.id)"
-                    class="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-600 ring-offset-gray-800 focus:ring-2">
-                </td>
                 <td class="p-3 align-top font-mono text-sm">{{ message.timestamp | date:'medium' }}</td>
                 <td class="p-3 align-top">
                   <pre class="text-xs bg-gray-900 p-2 rounded whitespace-pre-wrap">{{ message.headers | json }}</pre>

@@ -1,37 +1,63 @@
 package hu.porkolab.chaosSymphony.streams.api;
 
-import org.apache.kafka.streams.KafkaStreams;
-import org.apache.kafka.streams.StoreQueryParameters;
-import org.apache.kafka.streams.state.KeyValueIterator;
-import org.apache.kafka.streams.state.QueryableStoreTypes;
-import org.apache.kafka.streams.state.ReadOnlyKeyValueStore;
+import com.fasterxml.jackson.databind.JsonNode;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Mono;
 
-import java.util.LinkedHashMap;
 import java.util.Map;
 
 @RestController
 @RequestMapping("/api/metrics")
+@RequiredArgsConstructor
 public class MetricsController {
 
-	private final ReadOnlyKeyValueStore<String, Long> store;
+    private final WebClient prometheusWebClient;
 
-	public MetricsController(KafkaStreams streams) {
-		this.store = streams.store(
-				StoreQueryParameters.fromNameAndType("counts-store", QueryableStoreTypes.keyValueStore()));
-	}
+    public record SloMetrics(double p95Latency, long dltCount, double sloBurnRate1h) {}
 
-	@GetMapping("/paymentStatus")
-	public Map<String, Long> paymentStatus() {
-		Map<String, Long> out = new LinkedHashMap<>();
-		try (KeyValueIterator<String, Long> it = store.all()) {
-			while (it.hasNext()) {
-				var kv = it.next();
-				out.put(kv.key, kv.value);
-			}
-		}
-		return out;
-	}
+    @GetMapping(value = "/slo", produces = MediaType.APPLICATION_JSON_VALUE)
+    public Mono<SloMetrics> getSloMetrics() {
+        Mono<Double> p95LatencyMono = queryPrometheus("histogram_quantile(0.95, sum(rate(processing_time_ms_bucket[5m])) by (le))");
+        Mono<Double> dltCountMono = queryPrometheus("sum(dlt_messages_total) or vector(0)");
+        Mono<Double> sloBurnRateMono = queryPrometheus("orders_slo_burn_rate{window=\"1h\"} or vector(0)");
+
+        return Mono.zip(p95LatencyMono, dltCountMono, sloBurnRateMono)
+                .map(tuple -> new SloMetrics(
+                        tuple.getT1(),
+                        tuple.getT2().longValue(),
+                        tuple.getT3()
+                ));
+    }
+
+    private Mono<Double> queryPrometheus(String query) {
+        return prometheusWebClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/api/v1/query")
+                        .queryParam("query", query)
+                        .build())
+                .retrieve()
+                .bodyToMono(JsonNode.class)
+                .map(this::parsePrometheusValue)
+                .onErrorReturn(0.0);
+    }
+
+    private Double parsePrometheusValue(JsonNode response) {
+        try {
+            JsonNode result = response.path("data").path("result");
+            if (result.isArray() && result.size() > 0) {
+                JsonNode value = result.get(0).path("value");
+                if (value.isArray() && value.size() > 1) {
+                    return value.get(1).asDouble();
+                }
+            }
+        } catch (Exception e) {
+            // Log error or handle
+        }
+        return 0.0;
+    }
 }
