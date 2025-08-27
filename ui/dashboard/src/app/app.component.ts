@@ -1,16 +1,39 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-
-// Gyerek komponensek (standalone-ként)
-import { RouterOutlet } from '@angular/router';
+import { RouterOutlet, RouterLink, Router } from '@angular/router';
+import { TokenStorageService } from './token-storage.service';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, RouterOutlet],
+  imports: [CommonModule, RouterOutlet, RouterLink],
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.css']
 })
-export class AppComponent {
-  title = 'chaos-symphony-dashboard';
+export class AppComponent implements OnInit {
+  private roles: string[] = [];
+  isLoggedIn = false;
+  username?: string;
+
+  constructor(
+    private readonly tokenStorageService: TokenStorageService,
+    private readonly router: Router
+  ) {}
+
+  ngOnInit(): void {
+    this.isLoggedIn = !!this.tokenStorageService.getToken();
+
+    if (this.isLoggedIn) {
+      const user = this.tokenStorageService.getUser();
+      this.roles = user.roles;
+      this.username = user.username;
+    }
+  }
+
+  logout(): void {
+    this.tokenStorageService.signOut();
+    this.router.navigateByUrl('/login').then(() => {
+      window.location.reload();
+    });
+  }
 }
