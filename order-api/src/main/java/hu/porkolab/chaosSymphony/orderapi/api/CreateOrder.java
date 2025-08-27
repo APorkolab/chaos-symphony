@@ -4,9 +4,10 @@ import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
 
+import jakarta.validation.constraints.NotBlank;
+
 public record CreateOrder(
-    @NotNull @DecimalMin(value = "0.01") BigDecimal total, String customerId) {
-  public CreateOrder(@NotNull @DecimalMin(value = "0.01") BigDecimal total) {
-    this(total, null);
-  }
+    @NotNull @DecimalMin(value = "0.01") BigDecimal total,
+    @NotNull @NotBlank String customerId
+) {
 }

@@ -8,9 +8,11 @@ spring:
     topic:
       payment:
         requested: payment.requested
+        requested.canary: payment.requested.canary
     group:
       id:
         payment: payment-requested
+        payment.canary: payment-requested-canary
     bootstrap-servers: 127.0.0.1:29092
     retry:
       max-attempts: 5

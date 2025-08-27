@@ -17,10 +17,14 @@ import java.time.Duration;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 @RestController
 @RequestMapping("/api/dlq")
 public class DlqController {
 
+    private static final Logger log = LoggerFactory.getLogger(DlqController.class);
 	private final KafkaTemplate<String, String> template;
 	private final String bootstrap;
 
@@ -113,7 +117,8 @@ public class DlqController {
 						template.send(pr).get();
 						replayed++;
 					} catch (Exception e) {
-						// ha egy rekord küldése hibázik, nem állunk meg
+						log.error("Failed to replay message from DLT {} to topic {}. Record: {}",
+                                dltTopic, original, rec, e);
 					}
 				}
 			}

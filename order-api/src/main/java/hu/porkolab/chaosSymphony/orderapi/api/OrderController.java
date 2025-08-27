@@ -3,6 +3,7 @@ package hu.porkolab.chaosSymphony.orderapi.api;
 import hu.porkolab.chaosSymphony.orderapi.app.OrderService;
 import hu.porkolab.chaosSymphony.orderapi.domain.Order;
 import hu.porkolab.chaosSymphony.orderapi.domain.OrderRepository;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
@@ -19,11 +20,9 @@ public class OrderController {
 	private final OrderService service;
 	private final OrderRepository repository;
 
-	@PostMapping("/start")
-	public ResponseEntity<UUID> createOrder(@RequestParam BigDecimal amount) {
-		// The CreateOrder command object might have more fields in a real app
-		CreateOrder cmd = new CreateOrder(amount);
-		UUID orderId = service.createOrder(cmd);
+	@PostMapping
+	public ResponseEntity<UUID> createOrder(@RequestBody @Valid CreateOrder command) {
+		UUID orderId = service.createOrder(command);
 		return ResponseEntity.accepted().body(orderId);
 	}
 
