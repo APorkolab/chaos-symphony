@@ -90,7 +90,6 @@
       <artifactId>avro</artifactId>
     </dependency>
   </dependencies>
-
   <build>
     <plugins>
       <plugin>

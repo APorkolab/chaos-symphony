@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shipping-svc
+  labels:
+    app: shipping-svc
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: shipping-svc
+  template:
+    metadata:
+      labels:
+        app: shipping-svc
+    spec:
+      containers:
+      - name: shipping-svc
+        image: shipping-svc:latest

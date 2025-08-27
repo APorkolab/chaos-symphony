@@ -1,58 +1,97 @@
 import { Component, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { ChaosService } from './chaos.service';
-import { ChaosSettings, FaultType } from './chaos.model';
-import { Observable } from 'rxjs';
+import { ChaosRule } from './chaos.model';
+import { finalize } from 'rxjs';
 
 @Component({
   selector: 'app-chaos',
-  standalone: true,
-  imports: [CommonModule, FormsModule],
   templateUrl: './chaos.component.html',
   styleUrls: ['./chaos.component.css']
 })
 export class ChaosComponent implements OnInit {
 
-  settings$!: Observable<ChaosSettings>;
-  faultTypes = Object.values(FaultType);
+  rules: Record<string, ChaosRule> = {};
+  topics: string[] = [];
+  ruleForm: FormGroup;
+  isLoading = false;
+  canaryEnabled = false;
 
-  // A local copy for two-way binding with ngModel
-  localSettings: ChaosSettings = {
-    [FaultType.DELAY]: { enabled: false, probability: 0, delayMs: 0 },
-    [FaultType.DUPLICATE]: { enabled: false, probability: 0 },
-    [FaultType.MUTATE]: { enabled: false, probability: 0 },
-    [FaultType.DROP]: { enabled: false, probability: 0 },
-  };
-  canaryEnabled: boolean = false;
-
-  constructor(private chaosService: ChaosService) {}
-
-  ngOnInit(): void {
-    this.settings$ = this.chaosService.settings$;
-    this.settings$.subscribe(settings => {
-      // Deep copy to avoid direct mutation of the service's state
-      this.localSettings = JSON.parse(JSON.stringify(settings));
+  constructor(
+    private fb: FormBuilder,
+    private chaosService: ChaosService
+  ) {
+    this.ruleForm = this.fb.group({
+      topic: ['', Validators.required],
+      pDrop: [0, [Validators.min(0), Validators.max(1)]],
+      pDup: [0, [Validators.min(0), Validators.max(1)]],
+      maxDelayMs: [0, Validators.min(0)],
+      pCorrupt: [0, [Validators.min(0), Validators.max(1)]]
     });
-    this.chaosService.loadSettings();
   }
 
-  onSettingChange(faultType: FaultType): void {
-    const setting = this.localSettings[faultType];
-    this.chaosService.updateSetting(faultType, setting).subscribe({
-      next: () => console.log(`${faultType} updated successfully.`),
-      error: (err) => console.error(`Failed to update ${faultType}`, err)
-    });
+  ngOnInit(): void {
+    this.loadRules();
+  }
+
+  loadRules(): void {
+    this.isLoading = true;
+    this.chaosService.getRules()
+      .pipe(finalize(() => this.isLoading = false))
+      .subscribe(data => {
+        this.rules = data;
+        this.topics = Object.keys(data);
+      });
+  }
+
+  editRule(topic: string): void {
+    const rule = this.rules[topic];
+    if (rule) {
+      // Need to add topic since it's part of the form but not the rule object
+      const formData = { topic, ...rule };
+      this.ruleForm.setValue(formData);
+    }
+  }
+
+  onSubmit(): void {
+    if (this.ruleForm.invalid) {
+      return;
+    }
+    this.isLoading = true;
+    const { topic, ...ruleValues } = this.ruleForm.value;
+    const rule: ChaosRule = ruleValues;
+
+    this.chaosService.updateRule(topic, rule)
+      .pipe(finalize(() => this.isLoading = false))
+      .subscribe(() => {
+        this.loadRules(); // Refresh the list after update
+        this.ruleForm.reset({
+          topic: '', pDrop: 0, pDup: 0, maxDelayMs: 0, pCorrupt: 0
+        });
+      });
+  }
+
+  onDelete(topic: string): void {
+    if (confirm(`Are you sure you want to delete the rule for topic "${topic}"?`)) {
+      this.isLoading = true;
+      this.chaosService.deleteRule(topic)
+        .pipe(finalize(() => this.isLoading = false))
+        .subscribe(() => this.loadRules());
+    }
   }
 
   onCanaryToggle(): void {
-    this.chaosService.setCanary(this.canaryEnabled).subscribe({
-      next: () => console.log(`Canary mode set to ${this.canaryEnabled}`),
-      error: (err) => {
-        console.error('Failed to set canary mode', err);
-        // Revert the toggle on error
-        this.canaryEnabled = !this.canaryEnabled;
-      }
-    });
+    this.isLoading = true;
+    // The service takes the desired state, so we use the current model value
+    this.chaosService.setCanary(this.canaryEnabled, 0.05)
+      .pipe(finalize(() => this.isLoading = false))
+      .subscribe({
+        next: () => console.log(`Canary toggled to ${this.canaryEnabled}`),
+        error: (err) => {
+          console.error('Failed to toggle canary', err);
+          // Revert the toggle on error
+          this.canaryEnabled = !this.canaryEnabled;
+        }
+      });
   }
 }

@@ -1,18 +1,14 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-
-export interface SloMetrics {
-  p95Latency: number;
-  dltCount: number;
-  sloBurnRate1h: number;
-}
+import { SloMetrics } from './slo.model';
 
 @Injectable({
   providedIn: 'root'
 })
 export class SloService {
-  private apiUrl = 'http://localhost:8095/api/metrics/slo'; // streams-analytics service
+  // Use a relative path that will be proxied by the Angular dev server
+  private apiUrl = '/api/metrics/slo';
 
   constructor(private http: HttpClient) { }
 

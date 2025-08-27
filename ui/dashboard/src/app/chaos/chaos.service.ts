@@ -1,81 +1,59 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { BehaviorSubject, Observable, of, tap, switchMap } from 'rxjs';
-import { ChaosRule, ChaosSettings, FaultType } from './chaos.model';
+import { Observable } from 'rxjs';
+import { ChaosRule } from './chaos.model';
 
 @Injectable({
   providedIn: 'root'
 })
 export class ChaosService {
-  private apiUrl = 'http://localhost:8088/api/chaos/rules'; // Base URL for the chaos-svc rules
 
-  private activeRules = new Map<FaultType, string>(); // Maps fault type to the created rule ID
-
-  private settings = new BehaviorSubject<ChaosSettings>({
-    [FaultType.DELAY]: { enabled: false, probability: 0.1, delayMs: 1000 },
-    [FaultType.DUPLICATE]: { enabled: false, probability: 0.1 },
-    [FaultType.MUTATE]: { enabled: false, probability: 0.1 },
-    [FaultType.DROP]: { enabled: false, probability: 0.1 },
-  });
-
-  settings$ = this.settings.asObservable();
+  // Use a relative path that will be proxied by the Angular dev server
+  // or a reverse proxy in production to the chaos-svc.
+  private readonly rulesApiUrl = '/api/chaos/rules';
+  private readonly canaryApiUrl = '/api/canary/config';
 
   constructor(private http: HttpClient) { }
 
-  loadSettings(): void {
-    this.http.get<ChaosRule[]>(this.apiUrl).subscribe(rules => {
-      const newSettings = this.settings.getValue();
-      // Reset all to disabled
-      Object.values(FaultType).forEach(ft => newSettings[ft].enabled = false);
-      this.activeRules.clear();
-
-      // Apply rules from backend
-      rules.forEach(rule => {
-        if (newSettings[rule.faultType]) {
-          newSettings[rule.faultType].enabled = true;
-          newSettings[rule.faultType].probability = rule.probability;
-          if(rule.delayMs) newSettings[rule.faultType].delayMs = rule.delayMs;
-          this.activeRules.set(rule.faultType, rule.id);
-        }
-      });
-      this.settings.next(newSettings);
-    });
+  /**
+   * Fetches the current map of all chaos rules from the backend.
+   * The key is the topic name, the value is the rule.
+   */
+  getRules(): Observable<Record<string, ChaosRule>> {
+    return this.http.get<Record<string, ChaosRule>>(this.rulesApiUrl);
   }
 
-  updateSetting(faultType: FaultType, setting: { enabled: boolean; probability: number; delayMs?: number }): Observable<any> {
-    const existingRuleId = this.activeRules.get(faultType);
-
-    const delete$ = existingRuleId ? this.http.delete(`${this.apiUrl}/${existingRuleId}`) : of(null);
-
-    return delete$.pipe(
-      switchMap(() => {
-        if (setting.enabled) {
-          const newRule = {
-            targetTopic: 'all', // Target all topics for simplicity
-            faultType: faultType,
-            probability: setting.probability,
-            delayMs: setting.delayMs,
-          };
-          return this.http.post<ChaosRule>(this.apiUrl, newRule).pipe(
-            tap(createdRule => {
-              this.activeRules.set(faultType, createdRule.id);
-            })
-          );
-        } else {
-          this.activeRules.delete(faultType);
-          return of(null); // Nothing to do if disabled and already deleted
-        }
-      }),
-      tap(() => this.loadSettings()) // Refresh state from backend after change
-    );
+  /**
+   * Updates the rule for a specific topic.
+   * @param topic The topic to apply the rule to (e.g., 'payment.requested').
+   * @param rule The chaos rule to apply.
+   */
+  updateRule(topic: string, rule: ChaosRule): Observable<ChaosRule> {
+    return this.http.put<ChaosRule>(`${this.rulesApiUrl}/${topic}`, rule);
   }
 
-  setCanary(enabled: boolean): Observable<any> {
-    const config = {
-      enabled: enabled,
-      percentage: 0.05 // As per spec
-    };
-    // The API URL for canary is different from rules
-    return this.http.post('http://localhost:8088/api/canary/config', config);
+  /**
+   * Deletes the chaos rule for a specific topic.
+   * @param topic The topic from which to remove the rule.
+   */
+  deleteRule(topic: string): Observable<void> {
+    return this.http.delete<void>(`${this.rulesApiUrl}/${topic}`);
+  }
+
+  /**
+   * Clears all chaos rules from the system.
+   */
+  clearAllRules(): Observable<void> {
+    return this.http.delete<void>(this.rulesApiUrl);
+  }
+
+  /**
+   * Enables or disables the canary release for the payment service.
+   * @param enabled Whether to enable the canary.
+   * @param percentage The percentage of traffic to send to the canary (e.g., 0.05 for 5%).
+   */
+  setCanary(enabled: boolean, percentage: number): Observable<void> {
+    const config = { enabled, percentage };
+    return this.http.post<void>(this.canaryApiUrl, config);
   }
 }

@@ -88,7 +88,28 @@ jobs:
           curl -s -X DELETE "http://localhost:8088/api/chaos/rules/$RULE_ID"
           echo "Deleted chaos rule $RULE_ID."
 
-      - name: 'Step 8: Generate Report'
+      - name: 'Step 8: Auto-Heal'
+        run: |
+          echo "Attempting to auto-heal..."
+          echo "Scaling payment-svc consumers to 3..."
+          docker compose -f deployment/docker-compose.yml up -d --scale payment-svc=3
+          echo "Retrying messages from payment.requested.dlt..."
+          curl -s -X POST http://localhost:8089/api/dlq/payment.requested.dlt/replay
+          echo "Auto-heal actions complete. Waiting for system to stabilize..."
+          sleep 15
+
+      - name: 'Step 9: Run Load After Heal & Measure Recovery'
+        id: recovery_metrics
+        run: |
+          echo "Running smoke test after auto-heal for ${{ github.event.inputs.smoke_test_duration }}..."
+          timeout ${{ github.event.inputs.smoke_test_duration }} bash -c 'while true; do curl -s -X POST "http://localhost:8080/api/orders/start" -H "Content-Type: application/json" --data "{\\"total\\": 100, \\"customerId\\": \\"customer-123\\"}"; sleep 0.5; done' || true
+          echo "Recovery test finished. Waiting for metrics to stabilize..."
+          sleep 15
+          METRIC_URL="http://localhost:9090/api/v1/query?query=histogram_quantile(0.95, sum(rate(kafka_streams_process_latency_ms_bucket[1m])) by (le))"
+          P95_RECOVERY=$(curl -s $METRIC_URL | jq -r '.data.result[0].value[1]')
+          echo "P95_RECOVERY=$P95_RECOVERY" >> $GITHUB_ENV
+
+      - name: 'Step 10: Generate Report'
         run: |
           echo "Generating GameDay report..."
           echo "## 🎲 GameDay Report - $(date)" > gameday-report.md
@@ -99,11 +120,11 @@ jobs:
           echo "- **Delay:** ${{ github.event.inputs.delay_ms }}ms" >> gameday-report.md
           echo "" >> gameday-report.md
           echo "### Results" >> gameday-report.md
-          echo "| Metric | Baseline | Under Chaos |" >> gameday-report.md
-          echo "|---|---|---|" >> gameday-report.md
-          echo "| **p95 Latency (ms)** | \`${{ env.P95_BASELINE }}\` | \`${{ env.P95_CHAOS }}\` |" >> gameday-report.md
+          echo "| Metric | Baseline | Under Chaos | After Heal |" >> gameday-report.md
+          echo "|---|---|---|---|" >> gameday-report.md
+          echo "| **p95 Latency (ms)** | \`${{ env.P95_BASELINE }}\` | \`${{ env.P95_CHAOS }}\` | \`${{ env.P95_RECOVERY }}\` |" >> gameday-report.md
 
-      - name: 'Step 9: Upload Report Artifact'
+      - name: 'Step 11: Upload Report Artifact'
         uses: actions/upload-artifact@v4
         with:
           name: gameday-report

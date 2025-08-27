@@ -1,36 +1,32 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
-import { Order, OrderHistory } from './order.model';
+import { CreateOrderCommand, Order } from './order.model';
 
 @Injectable({
   providedIn: 'root'
 })
 export class OrderService {
-  private apiUrl = 'http://localhost:8080/api/orders'; // Base URL for the order-api
+  private orderApiUrl = '/api/orders'; // Proxied to order-api
+  private replayApiUrl = '/api/replay'; // Proxied to streams-analytics
 
   constructor(private http: HttpClient) { }
 
   getOrders(): Observable<Order[]> {
-    return this.http.get<Order[]>(this.apiUrl);
+    return this.http.get<Order[]>(this.orderApiUrl);
   }
 
-  getOrderHistory(id: string): Observable<OrderHistory> {
-    const historyUrl = `http://localhost:8095/api/orders/${id}/history`;
-    return this.http.get<OrderHistory>(historyUrl);
+  createOrder(command: CreateOrderCommand): Observable<{ orderId: string }> {
+    return this.http.post<{ orderId: string }>(this.orderApiUrl, command);
   }
 
-  createOrder(amount: number): Observable<any> {
-    return this.http.post(`${this.apiUrl}/start?amount=${amount}`, {});
-  }
-
-  replayLastFiveMinutes(): Observable<any> {
+  // The original file had this, which is a good feature to keep.
+  // It calls the streams-analytics service.
+  replayLastFiveMinutes(): Observable<void> {
     const request = {
-      consumerGroupId: 'orchestrator-order-created',
-      duration: '5m'
+      consumerGroupId: 'orchestrator-order-created', // This needs to be known
+      duration: 'PT5M' // ISO 8601 duration format
     };
-    // Note: This calls a different service (streams-analytics)
-    return this.http.post('http://localhost:8095/api/replay', request);
+    return this.http.post<void>(this.replayApiUrl, request);
   }
 }

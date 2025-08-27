@@ -1,12 +1,3 @@
-export interface ChaosRule {
-  id: string;
-  targetTopic: string;
-  faultType: FaultType;
-  probability: number; // 0.0 to 1.0
-  delayMs?: number;
-  // Other potential fields like 'errorCode', 'exceptionMessage', etc.
-}
-
 export enum FaultType {
   DELAY = 'DELAY',
   DUPLICATE = 'DUPLICATE',
@@ -14,11 +5,19 @@ export enum FaultType {
   DROP = 'DROP'
 }
 
-// A simplified model for the UI state
-export interface ChaosSettings {
-  [key: string]: {
-    enabled: boolean;
-    probability: number;
-    delayMs?: number;
-  };
+export interface ChaosRule {
+  pDrop: number;
+  pDup: number;
+  maxDelayMs: number;
+  pCorrupt: number;
 }
+
+export interface ChaosSetting {
+  enabled: boolean;
+  probability: number;
+  delayMs?: number;
+}
+
+export type ChaosSettings = {
+  [key in FaultType]: ChaosSetting;
+};

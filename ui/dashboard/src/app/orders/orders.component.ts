@@ -1,68 +1,66 @@
 import { Component, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { OrderService } from './order.service';
-import { Order, OrderHistory, OrderStatus } from './order.model';
-import { Observable, of } from 'rxjs';
+import { finalize } from 'rxjs';
 
 @Component({
   selector: 'app-orders',
-  standalone: true,
-  imports: [CommonModule, FormsModule],
   templateUrl: './orders.component.html',
   styleUrls: ['./orders.component.css']
 })
 export class OrdersComponent implements OnInit {
 
-  orders$: Observable<Order[]> = of([]);
-  selectedOrderHistory$: Observable<OrderHistory | null> = of(null);
+  orderForm: FormGroup;
+  isLoading = false;
+  recentOrders: string[] = [];
 
-  newOrderAmount: number = 100;
-
-  // For styling the status chips
-  statusColors: Record<OrderStatus, string> = {
-    [OrderStatus.NEW]: 'bg-blue-500',
-    [OrderStatus.PAID]: 'bg-green-500',
-    [OrderStatus.ALLOCATED]: 'bg-yellow-500',
-    [OrderStatus.SHIPPED]: 'bg-purple-500',
-    [OrderStatus.FAILED]: 'bg-red-500',
-  };
-
-  constructor(private orderService: OrderService) {}
+  constructor(
+    private fb: FormBuilder,
+    private orderService: OrderService
+  ) {
+    this.orderForm = this.fb.group({
+      customerId: ['customer-123', Validators.required],
+      total: [100.00, [Validators.required, Validators.min(1)]]
+    });
+  }
 
   ngOnInit(): void {
-    this.loadOrders();
   }
 
-  loadOrders(): void {
-    this.orders$ = this.orderService.getOrders();
-  }
-
-  selectOrder(order: Order): void {
-    this.selectedOrderHistory$ = this.orderService.getOrderHistory(order.id);
-  }
-
-  createOrder(): void {
-    if (this.newOrderAmount > 0) {
-      this.orderService.createOrder(this.newOrderAmount).subscribe({
-        next: () => {
-          console.log('Order created successfully');
-          this.loadOrders();
-        },
-        error: (err) => console.error('Failed to create order', err)
-      });
+  onSubmit(): void {
+    if (this.orderForm.invalid) {
+      return;
     }
+
+    this.isLoading = true;
+    this.orderService.createOrder(this.orderForm.value)
+      .pipe(finalize(() => this.isLoading = false))
+      .subscribe({
+        next: (response) => {
+          // Add the new order ID to the top of the list
+          this.recentOrders.unshift(response.orderId);
+          // Keep only the last 10 orders for display
+          if (this.recentOrders.length > 10) {
+            this.recentOrders.pop();
+          }
+          this.orderForm.patchValue({ total: Math.round(100 + Math.random() * 500) });
+        },
+        error: (err) => {
+          console.error('Failed to create order', err);
+          // Here you would show an error message to the user
+        }
+      });
   }
 
   replay(): void {
-    this.orderService.replayLastFiveMinutes().subscribe({
-      next: () => {
-        console.log('Replay requested successfully');
-        // The UI should refresh automatically as new events are processed.
-        // We can add a small delay and then force a refresh for good measure.
-        setTimeout(() => this.loadOrders(), 1000);
-      },
-      error: (err) => console.error('Failed to request replay', err)
-    });
+    if (confirm('This will reset the consumer group for the orchestrator. Are you sure?')) {
+      this.isLoading = true;
+      this.orderService.replayLastFiveMinutes()
+        .pipe(finalize(() => this.isLoading = false))
+        .subscribe({
+          next: () => console.log('Replay command sent successfully.'),
+          error: (err) => console.error('Failed to send replay command', err)
+        });
+    }
   }
 }

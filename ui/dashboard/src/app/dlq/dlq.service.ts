@@ -8,7 +8,8 @@ import { DlqTopic, DlqMessage } from './dlq.model';
   providedIn: 'root'
 })
 export class DlqService {
-  private apiUrl = 'http://localhost:8089/api/dlq'; // Base URL for the dlq-admin service
+  // Use a relative path that will be proxied by the Angular dev server
+  private apiUrl = '/api/dlq';
 
   constructor(private http: HttpClient) { }
 

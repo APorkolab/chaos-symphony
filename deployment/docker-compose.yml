@@ -208,6 +208,21 @@ services:
     ports: ["8099:8080"]
     networks: [chaos-net]
 
+  ui:
+    build:
+      context: ../ui/dashboard
+      dockerfile: Dockerfile
+    container_name: ui
+    ports:
+      - "4200:80"
+    networks:
+      - chaos-net
+    depends_on:
+      - order-api
+      - streams-analytics
+      - dlq-admin
+      - chaos-svc
+
   kafdrop:
     image: obsidiandynamics/kafdrop:latest
     depends_on: [kafka]

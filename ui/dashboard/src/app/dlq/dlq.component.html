@@ -1,72 +1,64 @@
-<div class="container mx-auto p-4">
-  <h1 class="text-3xl font-bold mb-6">Dead-Letter Queue Management</h1>
+<div class="container mx-auto p-4 text-gray-200">
+  <h1 class="text-3xl font-bold mb-6">Dead-Letter Queue Admin</h1>
 
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
 
-    <!-- DLQ Topics List -->
-    <div class="md:col-span-1 bg-gray-800 p-4 rounded-lg shadow-md">
-      <h2 class="text-xl font-semibold mb-4">DLQ Topics</h2>
-      <ul>
-        <li *ngFor="let topic of topics$ | async"
+    <!-- Topics List -->
+    <div class="md:col-span-1 bg-gray-800 p-4 rounded-lg shadow-lg">
+      <h2 class="text-xl font-semibold mb-4 border-b border-gray-700 pb-2">DLT Topics</h2>
+      <div *ngIf="isLoadingTopics" class="text-center">Loading Topics...</div>
+      <ul *ngIf="!isLoadingTopics">
+        <li *ngFor="let topic of topics"
             (click)="selectTopic(topic)"
-            class="p-3 rounded-md cursor-pointer hover:bg-gray-700"
-            [class.bg-blue-600]="selectedTopic?.name === topic.name">
+            class="p-3 my-1 rounded-md cursor-pointer transition-colors"
+            [ngClass]="{'bg-blue-600 text-white': selectedTopic?.name === topic.name, 'hover:bg-gray-700': selectedTopic?.name !== topic.name}">
           <div class="flex justify-between items-center">
-            <span class="font-semibold">{{ topic.name }}</span>
-            <span class="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+            <span class="font-mono text-sm">{{ topic.name }}</span>
+            <span class="text-xs font-bold bg-gray-600 rounded-full px-2 py-1">
               {{ topic.messageCount }}
             </span>
           </div>
         </li>
+        <li *ngIf="topics.length === 0" class="text-gray-400">No DLTs found.</li>
       </ul>
     </div>
 
-    <!-- Messages in Selected Topic -->
-    <div class="md:col-span-2 bg-gray-800 p-4 rounded-lg shadow-md">
-      <div *ngIf="selectedTopic; else noTopicSelected">
-        <div class="flex justify-between items-center mb-4">
+    <!-- Messages View -->
+    <div class="md:col-span-2 bg-gray-800 p-4 rounded-lg shadow-lg">
+      <div *ngIf="!selectedTopic" class="flex items-center justify-center h-full">
+        <p class="text-gray-500">Select a topic to view its messages.</p>
+      </div>
+
+      <div *ngIf="selectedTopic">
+        <div class="flex justify-between items-center mb-4 border-b border-gray-700 pb-2">
           <h2 class="text-xl font-semibold">Messages in <span class="font-mono text-blue-400">{{ selectedTopic.name }}</span></h2>
-          <div class="space-x-2">
-            <button
-              (click)="replayAll()"
-              class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-md transition duration-300">
+          <div>
+            <button (click)="onReplay(selectedTopic)"
+                    class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded mr-2 disabled:bg-gray-500"
+                    [disabled]="isLoadingTopics || selectedTopic.messageCount === 0">
               Replay All
             </button>
-            <button
-              (click)="purge()"
-              class="bg-red-700 hover:bg-red-800 text-white font-bold py-2 px-4 rounded-md transition duration-300">
-              Purge Topic
+            <button (click)="onPurge(selectedTopic)"
+                    class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded disabled:bg-gray-500"
+                    [disabled]="isLoadingTopics || selectedTopic.messageCount === 0">
+              Purge All
             </button>
           </div>
         </div>
-        <div class="overflow-x-auto">
-          <table class="min-w-full text-left">
-            <thead class="bg-gray-700">
-              <tr>
-                <th class="p-3">Timestamp</th>
-                <th class="p-3">Headers</th>
-                <th class="p-3">Payload</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr *ngFor="let message of messages$ | async" class="border-b border-gray-700">
-                <td class="p-3 align-top font-mono text-sm">{{ message.timestamp | date:'medium' }}</td>
-                <td class="p-3 align-top">
-                  <pre class="text-xs bg-gray-900 p-2 rounded whitespace-pre-wrap">{{ message.headers | json }}</pre>
-                </td>
-                <td class="p-3 align-top">
-                  <pre class="text-xs bg-gray-900 p-2 rounded whitespace-pre-wrap">{{ message.payload | json }}</pre>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+
+        <div *ngIf="isLoadingMessages" class="text-center">Loading Messages...</div>
+
+        <div *ngIf="!isLoadingMessages && messages.length === 0" class="text-gray-400">
+          No messages found in this topic (or unable to peek).
+        </div>
+
+        <div class="space-y-2 max-h-96 overflow-y-auto">
+          <div *ngFor="let msg of messages; let i = index" class="bg-gray-900 p-3 rounded">
+            <pre class="text-xs text-gray-300 whitespace-pre-wrap break-all"><code>{{ msg }}</code></pre>
+          </div>
         </div>
       </div>
-      <ng-template #noTopicSelected>
-        <div class="flex items-center justify-center h-full">
-          <p class="text-gray-400">Select a topic to see its messages.</p>
-        </div>
-      </ng-template>
     </div>
+
   </div>
 </div>

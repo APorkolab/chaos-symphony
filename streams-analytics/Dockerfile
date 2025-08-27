@@ -1,0 +1,31 @@
+# Stage 1: Build the application using Maven
+FROM maven:3.9-eclipse-temurin-21 AS builder
+
+# Set the working directory
+WORKDIR /app
+
+# Copy the Maven wrapper and the parent POM file
+COPY .mvn/ .mvn
+COPY mvnw pom.xml ./
+
+# Copy the entire project source code
+COPY . .
+
+# Build the target service ('streams-analytics') and its dependencies ('-am')
+RUN mvn -B package -pl streams-analytics -am -DskipTests
+
+# ---
+
+# Stage 2: Create the final, lightweight image
+FROM eclipse-temurin:21-jre-jammy
+
+WORKDIR /app
+
+# Copy the executable JAR from the builder stage
+COPY --from=builder /app/streams-analytics/target/*.jar ./application.jar
+
+# Expose the port that the application will run on
+EXPOSE 8095
+
+# Set the entrypoint to run the application
+ENTRYPOINT ["java", "-jar", "./application.jar"]

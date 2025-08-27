@@ -1,66 +1,70 @@
 import { Component, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { DlqService } from './dlq.service';
 import { DlqTopic, DlqMessage } from './dlq.model';
-import { Observable, of } from 'rxjs';
-import { FormsModule } from '@angular/forms';
+import { finalize } from 'rxjs';
 
 @Component({
   selector: 'app-dlq',
-  standalone: true,
-  imports: [CommonModule, FormsModule],
   templateUrl: './dlq.component.html',
   styleUrls: ['./dlq.component.css']
 })
 export class DlqComponent implements OnInit {
 
-  topics$: Observable<DlqTopic[]> = of([]);
-  messages$: Observable<DlqMessage[]> = of([]);
+  topics: DlqTopic[] = [];
   selectedTopic: DlqTopic | null = null;
+  messages: DlqMessage[] = [];
+  isLoadingTopics = false;
+  isLoadingMessages = false;
 
-  constructor(private dlqService: DlqService) {}
+  constructor(private dlqService: DlqService) { }
 
   ngOnInit(): void {
     this.loadTopics();
   }
 
   loadTopics(): void {
-    this.topics$ = this.dlqService.getDlqTopics();
+    this.isLoadingTopics = true;
+    this.dlqService.getDlqTopics()
+      .pipe(finalize(() => this.isLoadingTopics = false))
+      .subscribe(data => {
+        this.topics = data;
+      });
   }
 
   selectTopic(topic: DlqTopic): void {
     this.selectedTopic = topic;
-    this.messages$ = this.dlqService.getMessages(topic.name);
-  }
-
-  replayAll(): void {
-    if (!this.selectedTopic) return;
-    this.dlqService.retryAllForTopic(this.selectedTopic.name).subscribe({
-      next: () => {
-        alert('Replay command sent successfully.');
-        this.refreshData();
-      },
-      error: (err) => alert(`Replay failed: ${err.message}`)
-    });
-  }
-
-  purge(): void {
-    if (!this.selectedTopic) return;
-    if (confirm(`Are you sure you want to purge all messages from ${this.selectedTopic.name}? This action cannot be undone.`)) {
-      this.dlqService.purgeTopic(this.selectedTopic.name).subscribe({
-        next: () => {
-          alert('Purge command sent successfully.');
-          this.refreshData();
-        },
-        error: (err) => alert(`Purge failed: ${err.message}`)
-      });
+    this.messages = [];
+    if (topic) {
+      this.isLoadingMessages = true;
+      this.dlqService.getMessages(topic.name, 20) // Peek at 20 messages
+        .pipe(finalize(() => this.isLoadingMessages = false))
+        .subscribe(msgs => this.messages = msgs);
     }
   }
 
-  private refreshData(): void {
-    this.loadTopics();
-    if (this.selectedTopic) {
-      this.selectTopic(this.selectedTopic);
+  onReplay(topic: DlqTopic): void {
+    if (confirm(`Are you sure you want to replay all messages from "${topic.name}"?`)) {
+      this.isLoadingTopics = true; // Use main loader for topic-level actions
+      this.dlqService.retryAllForTopic(topic.name)
+        .pipe(finalize(() => this.loadTopics())) // Refresh list after action
+        .subscribe(response => {
+          console.log('Replay response:', response);
+          this.selectedTopic = null; // Deselect to avoid stale message view
+          this.messages = [];
+        });
+    }
+  }
+
+  onPurge(topic: DlqTopic): void {
+    if (confirm(`DANGER: Are you sure you want to permanently delete all messages from "${topic.name}"?`)) {
+      this.isLoadingTopics = true;
+      this.dlqService.purgeTopic(topic.name)
+        .pipe(finalize(() => this.loadTopics()))
+        .subscribe(response => {
+          console.log('Purge response:', response);
+          this.selectedTopic = null;
+          this.messages = [];
+        });
     }
   }
 }

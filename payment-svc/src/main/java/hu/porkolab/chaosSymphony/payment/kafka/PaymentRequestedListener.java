@@ -11,10 +11,14 @@ import io.micrometer.core.instrument.Timer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.common.errors.SerializationException;
 import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.annotation.RetryableTopic;
+import org.springframework.retry.annotation.Backoff;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.net.SocketTimeoutException;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 
@@ -31,6 +35,15 @@ public class PaymentRequestedListener {
     private final Timer processingTime;
     private final ObjectMapper om = new ObjectMapper();
 
+    @RetryableTopic(
+            attempts = "4", // 1 initial try + 3 retries
+            backoff = @Backoff(delay = 1000, multiplier = 2.0, random = true),
+            include = {
+                    SocketTimeoutException.class,
+                    IllegalStateException.class
+            },
+            autoCreateTopics = "false" // In production, topics should be created by Ops/Terraform
+    )
     @KafkaListener(topics = "${kafka.topic.payment.requested}", groupId = "${kafka.group.id.payment}")
     @Transactional
     public void onPaymentRequested(ConsumerRecord<String, String> rec) throws Exception {
@@ -71,6 +84,15 @@ public class PaymentRequestedListener {
         ;
     }
 
+    @RetryableTopic(
+            attempts = "4",
+            backoff = @Backoff(delay = 1000, multiplier = 2.0, random = true),
+            include = {
+                    SocketTimeoutException.class,
+                    IllegalStateException.class
+            },
+            autoCreateTopics = "false"
+    )
     @KafkaListener(topics = "${kafka.topic.payment.requested.canary}", groupId = "${kafka.group.id.payment.canary}")
     @Transactional
     public void onPaymentRequestedCanary(ConsumerRecord<String, String> rec) throws Exception {

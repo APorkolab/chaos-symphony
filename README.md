@@ -1,8 +1,31 @@
 # Chaos Symphony
 
+[![CI Build and Test](https://github.com/your-username/chaos-symphony/actions/workflows/ci.yml/badge.svg)](https://github.com/your-username/chaos-symphony/actions/workflows/ci.yml)
+
 Chaos Symphony is a fictitious, event-driven, microservices-based system designed to demonstrate and teach advanced software engineering patterns. It simulates a simple payment processing workflow but focuses heavily on resilience, observability, and automated chaos engineering to ensure the system can withstand real-world failures.
 
 This project is not just a demo; it's a hands-on lab. It's built to be broken, observed, and improved. The core philosophy is that a system's true strength is revealed not when it's running perfectly, but when it's gracefully handling failures.
+
+## Service Level Objectives (SLOs)
+
+| Service Level Indicator (SLI) | Objective (per day) |
+| :--- | :--- |
+| **End-to-End Latency** | `p95(order_processing_time) < 2000ms` |
+| **Availability** | `successful_requests / total_requests >= 99.5%` |
+| **Data Integrity** | `dlt_messages_total < 0.3% of total messages` |
+
+---
+
+*(Note: The following screenshots could not be generated due to Docker Hub pull rate limits in the automated environment. When run locally, this section would display live dashboards.)*
+
+**Example Distributed Trace:**
+> A screenshot from Jaeger or a similar tool would be displayed here, showing a single `createOrder` request propagating through `order-api`, `orchestrator`, `payment-svc`, and other services, all linked by a single `traceId`.
+
+**Example Grafana SLO Dashboard:**
+> A screenshot of the Grafana dashboard would be here, showing the p95 latency, availability, and DLQ count panels against their defined SLO thresholds.
+
+---
+
 
 ## Core Architectural Principles
 
@@ -27,80 +50,109 @@ This project serves as a practical example of several critical patterns for buil
 | **Windowed SLO Monitoring** | The `streams-analytics` service uses Kafka Streams to calculate SLO metrics (e.g., p95 latency, error rate) over rolling time windows. | Provides a real-time, actionable view of system health against defined business objectives, enabling proactive incident response. |
 | **Automated GameDay** | The `gameday-svc` provides an API to trigger a pre-defined chaos experiment against the `payment-svc` while monitoring the system's SLOs. | Moves chaos engineering from a manual, periodic exercise to an automated, repeatable practice, continuously building confidence in the system's resilience. |
 
-## Running the System
+## How to Run the System
 
 **Prerequisites:**
 *   Docker and Docker Compose
-*   Maven
-*   Java 17
+*   Maven & JDK 21
 
 **1. Build the Project:**
-First, build all the Java modules using Maven. This will also run the Pact contract tests.
+Build all Java modules and the Angular UI from the project root. This command runs all tests (including contract tests when enabled) and prepares the artifacts for Docker.
 ```bash
-./mvnw clean install
+mvn -B clean verify
 ```
 
 **2. Start the Infrastructure & Services:**
-Use Docker Compose to bring up the entire system. This includes the application services, Kafka, databases, and the observability stack.
+Use Docker Compose to build the container images and start the entire system.
 ```bash
-docker-compose up -d
+docker-compose up -d --build
 ```
 
 **3. Accessing the System:**
 
-*   **Angular UI:** [http://localhost:4200](http://localhost:4200)
-    *   This is the main interface for interacting with the system.
-*   **Grafana:** [http://localhost:3000](http://localhost:3000) (admin/admin)
-    *   Explore the pre-built "Chaos Symphony SLO" dashboard.
+*   **Angular UI:** [http://localhost:4200](http://localhost:4200) - The main control panel.
+*   **Grafana:** [http://localhost:3000](http://localhost:3000) (admin/admin) - View the SLO dashboard.
 *   **Prometheus:** [http://localhost:9090](http://localhost:9090)
-*   **Kafka UI (Kafdrop):** [http://localhost:9000](http://localhost:9000)
+*   **Kafka UI (Kafdrop):** [http://localhost:9000](http://localhost:9000) - Inspect Kafka topics.
 
-## How to Demonstrate the Features
+### Deploying to Kubernetes
 
-This section provides a script for a live demonstration of the system's capabilities.
+The project includes a full set of Kubernetes manifests in the `/kubernetes` directory, managed by Kustomize.
 
-#### Demo 1: The "Happy Path" Workflow
+**Prerequisites:**
+*   A running Kubernetes cluster.
+*   `kubectl` configured to connect to your cluster.
+*   A container registry (like Docker Hub, GCR, or a private registry) to push your images to.
 
-1.  **Open the UI:** Navigate to [http://localhost:4200](http://localhost:4200).
-2.  **Start a Workflow:** In the "Orchestrator" panel, enter a unique `correlationId` (e.g., `test-1`) and a payload (e.g., `{"amount": 100}`). Click "Start Workflow".
-3.  **Observe:** Watch the logs in the UI. You'll see the `orchestrator` start the process and the `payment-svc` process the payment.
-4.  **Check Kafka:** Open Kafdrop ([http://localhost:9000](http://localhost:9000)) to see the messages flowing through the `payment.requested` and other topics.
+**Steps:**
 
-#### Demo 2: Failure, DLT, and Manual Recovery
+1.  **Build and Push Docker Images:**
+    The `docker-compose.yml` file can be used to build the images, but you will need to manually tag and push them to your container registry. For example, for the `payment-svc`:
+    ```bash
+    docker build -t your-registry/payment-svc:latest payment-svc/
+    docker push your-registry/payment-svc:latest
+    ```
+    *(Repeat for all services and the UI)*
 
-1.  **Inject a Failure:** In the UI's "Payment Service" panel, use the "Set Response Type" feature to make the service return an `ERROR`.
-2.  **Start a New Workflow:** Go back to the "Orchestrator" panel and start a new workflow with a different `correlationId` (e.g., `test-fail-1`).
-3.  **Observe the Failure:** The `payment-svc` will fail to process the message. After a few automated retries (configured with exponential backoff), Spring Kafka will give up and send the message to the `payment.requested.dlt` topic.
-4.  **View the DLT:** In the UI, navigate to the "Dead Letter Queue" view. You will see the failed message here.
-5.  **Fix the System:** Go back to the "Payment Service" panel and set its response type back to `SUCCESS`.
-6.  **Recover:** In the "Dead Letter Queue" view, click "Replay All". This will move the message from the DLT back to the main topic. The `payment-svc` will now successfully process it, and the workflow will complete.
+2.  **Update Image Names in Deployments:**
+    You will need to update the `image` field in each `deployment.yaml` file (e.g., `kubernetes/payment-svc/deployment.yaml`) to point to the images you pushed to your registry.
 
-#### Demo 3: Automated GameDay and SLO Monitoring
+3.  **Deploy the Application:**
+    Apply all the manifests using Kustomize:
+    ```bash
+    kubectl apply -k kubernetes/
+    ```
 
-1.  **Open Grafana:** Open the "Chaos Symphony SLO" dashboard in Grafana ([http://localhost:3000](http://localhost:3000)). You should see green SLOs.
-2.  **Start the GameDay:** In the UI's "GameDay Service" panel, click "Start Experiment".
-3.  **Observe the Chaos:** The `gameday-svc` will call the `chaos-svc` to inject latency into the `payment-svc`.
-4.  **Watch the SLOs:** Switch back to Grafana. You will see the `p95 latency` metric increase. As it crosses the SLO threshold, the panel will turn red. The "SLO Burn Rate" panel will also start to increase, showing you how quickly you are consuming your error budget.
-5.  **View Live SLOs in UI:** The "SLO Status" panel in the main UI is powered by a BFF endpoint and will also reflect the degraded performance in real-time.
-6.  **Automatic Resolution:** The chaos experiment is time-boxed. After it ends, the latency will return to normal, and the SLOs in Grafana will turn green again. This demonstrates the system's ability to self-heal after a transient failure.
+## 5-Minute Demo Script
+
+This script follows the demonstration flow outlined in the project specification.
+
+1.  **Show Healthy State:**
+    *   Open the UI at [http://localhost:4200](http://localhost:4200).
+    *   Navigate to the **SLO** view. Point out that all metrics are green: "E2E p95 Latency < 2s", "DLQ Count is 0".
+
+2.  **Create an Order:**
+    *   Go to the **Orders** view.
+    *   Click "**Create New Order**". An order ID appears in the list below.
+    *   Explain that this triggered a SAGA workflow, and the order's timeline can be seen by clicking its ID (future feature).
+
+3.  **Inject Chaos:**
+    *   Go to the **Chaos** view.
+    *   Enable **Delay** (e.g., 1200ms), **Duplicate**, and **Mutate** toggles.
+    *   Create a few more orders.
+    *   Switch to the **SLO** view. Show that the p95 latency is rising and the panel is turning red. Show that the DLQ count is also increasing due to mutated, un-parsable messages.
+
+4.  **Drill-Down and Recover:**
+    *   Go to the **DLQ** view. You will see the failed messages.
+    *   Click the "peek" icon to inspect a message's payload and headers, pointing out the `x-exception-message` header.
+    *   Go back to the **Chaos** view and **disable all chaos toggles**.
+    *   Return to the **DLQ** view and click "**Replay All**" for the relevant topic.
+    *   Show that the DLT count in the SLO view returns to zero.
+
+5.  **Demonstrate Canary Release:**
+    *   In the **Chaos** view, enable the **Canary** toggle. Explain that this routes 5% of traffic to a new version of the `payment-svc`.
+    *   In Grafana, show the dashboard comparing the performance of `payment-svc` and `payment-svc-canary`.
+
+6.  **Demonstrate Time-Travel Replay:**
+    *   In the **Orders** view, click the "**Replay 5m**" button.
+    *   Explain that this is resetting the analytics consumer group to re-process the last 5 minutes of events, allowing for "time-travel" analysis in the UI.
+
+7.  **Show Automated GameDay Report:**
+    *   Go to the project's GitHub Actions page.
+    *   Open the last run of the "**GameDay**" workflow.
+    *   Show the downloaded `GameDay-Report.md` artifact, pointing out the measurements before, during, and after the automated chaos experiment.
 
 ## Anti-CRUD Checklist
 
-This checklist tracks the project's progress in moving beyond simple CRUD operations to a more robust, message-driven architecture.
+This checklist, derived from the project specification, tracks the implementation of patterns that go beyond simple data-entry applications.
 
-- [x] The system is event-driven.
-- [x] At least one service uses the Outbox pattern. (`orchestrator`)
-- [x] At least one service has an Idempotent Consumer. (`payment-svc`)
-- [x] The system uses a message broker (Kafka).
-- [x] The system includes consumer-driven contract tests (Pact).
-- [x] The system is observable (logs, metrics, traces).
-- [x] The system has defined SLOs.
-- [x] The system includes a automated chaos engineering experiment.
-- [ ] The project has a `RUNBOOK.md`.
-- [x] The system can be deployed and run with a single command (`docker-compose up`).
-- [ ] The system has end-to-end tests that validate a full business workflow.
-- [ ] The UI is served by a Backend-for-Frontend (BFF).
-- [x] The system includes a Dead-Letter Queue mechanism.
-- [x] The DLT mechanism includes an automated retry policy (e.g., exponential backoff).
-- [x] The system allows for manual DLT reprocessing.
-- [x] The system has a dedicated UI for operational tasks (like DLT management).
+- [x] **SAGA Pattern:** The order workflow is a choreographed Saga across multiple services.
+- [x] **Event Schemas:** Versioned schemas are managed by the Confluent Schema Registry.
+- [x] **Idempotency:** All consumers use a persistent store to track processed message IDs, preventing duplicates.
+- [x] **DLQ Policy:** Implemented with exponential backoff via Spring Kafka's `@RetryableTopic`.
+- [x] **Observability:** OTel traces, Prometheus metrics, and a Grafana SLO dashboard are all configured.
+- [x] **Testcontainers:** Used in the CI pipeline for integration testing against real dependencies.
+- [ ] **Contract Tests:** Pact tests are set up but not fully implemented.
+- [x] **RUNBOOK:** A detailed `RUNBOOK.md` exists for common operational scenarios.
+- [x] **Automated GameDay:** A GitHub Actions workflow automates chaos experiments and reporting.
+- [x] **Replay Capability:** The system can replay the last 5 minutes of events for analysis.
