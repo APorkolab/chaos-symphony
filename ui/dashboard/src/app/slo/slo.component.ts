@@ -5,9 +5,10 @@ import { switchMap } from 'rxjs/operators';
 import { SloMetrics } from './slo.model';
 
 @Component({
-  selector: 'app-slo',
-  templateUrl: './slo.component.html',
-  styleUrls: ['./slo.component.css']
+    selector: 'app-slo',
+    templateUrl: './slo.component.html',
+    styleUrls: ['./slo.component.css'],
+    standalone: false
 })
 export class SloComponent implements OnInit, OnDestroy {
 

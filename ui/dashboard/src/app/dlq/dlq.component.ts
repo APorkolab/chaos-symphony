@@ -4,9 +4,10 @@ import { DlqTopic, DlqMessage } from './dlq.model';
 import { finalize } from 'rxjs';
 
 @Component({
-  selector: 'app-dlq',
-  templateUrl: './dlq.component.html',
-  styleUrls: ['./dlq.component.css']
+    selector: 'app-dlq',
+    templateUrl: './dlq.component.html',
+    styleUrls: ['./dlq.component.css'],
+    standalone: false
 })
 export class DlqComponent implements OnInit {
 

@@ -5,9 +5,10 @@ import { ChaosRule } from './chaos.model';
 import { finalize } from 'rxjs';
 
 @Component({
-  selector: 'app-chaos',
-  templateUrl: './chaos.component.html',
-  styleUrls: ['./chaos.component.css']
+    selector: 'app-chaos',
+    templateUrl: './chaos.component.html',
+    styleUrls: ['./chaos.component.css'],
+    standalone: false
 })
 export class ChaosComponent implements OnInit {
 

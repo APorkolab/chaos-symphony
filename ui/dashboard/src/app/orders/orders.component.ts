@@ -4,9 +4,10 @@ import { OrderService } from './order.service';
 import { finalize } from 'rxjs';
 
 @Component({
-  selector: 'app-orders',
-  templateUrl: './orders.component.html',
-  styleUrls: ['./orders.component.css']
+    selector: 'app-orders',
+    templateUrl: './orders.component.html',
+    styleUrls: ['./orders.component.css'],
+    standalone: false
 })
 export class OrdersComponent implements OnInit {
 
