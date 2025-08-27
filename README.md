@@ -1,6 +1,6 @@
 # Chaos Symphony
 
-[![CI Build and Test](https://github.com/your-username/chaos-symphony/actions/workflows/ci.yml/badge.svg)](https://github.com/your-username/chaos-symphony/actions/workflows/ci.yml)
+[![CI Build and Test](https://github.com/APorkolab/chaos-symphony/actions/workflows/ci.yml/badge.svg)](https://github.com/APorkolab/chaos-symphony/actions/workflows/ci.yml)
 
 Chaos Symphony is a fictitious, event-driven, microservices-based system designed to demonstrate and teach advanced software engineering patterns. It simulates a simple payment processing workflow but focuses heavily on resilience, observability, and automated chaos engineering to ensure the system can withstand real-world failures.
 
