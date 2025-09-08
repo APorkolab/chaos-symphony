@@ -15,6 +15,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.kafka.test.context.EmbeddedKafka;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.ContextConfiguration;
 
@@ -25,6 +27,10 @@ import static au.com.dius.pact.consumer.dsl.LambdaDsl.newJsonBody;
 @ExtendWith(PactConsumerTestExt.class)
 @SpringBootTest
 @ActiveProfiles("test")
+@EmbeddedKafka(partitions = 1, 
+    topics = {"payment.request", "payment.result"},
+    bootstrapServersProperty = "spring.kafka.bootstrap-servers")
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 @PactTestFor(providerName = "payment-svc", providerType = ProviderType.ASYNCH, pactVersion = PactSpecVersion.V3)
 @ContextConfiguration(classes = TestConfig.class)
 public class PaymentSvcContractTest {

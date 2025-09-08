@@ -14,11 +14,21 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.TestTemplate;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.kafka.test.context.EmbeddedKafka;
+import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.test.context.ActiveProfiles;
 
 import java.util.Map;
 import java.util.UUID;
 
-@Provider("Orchestrator")
+@SpringBootTest
+@ActiveProfiles("test")
+@EmbeddedKafka(partitions = 1, 
+    topics = {"payment.result", "inventory.request", "shipping.request", "notification.request"},
+    bootstrapServersProperty = "spring.kafka.bootstrap-servers")
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
+@Provider("payment-result-producer")
 @PactFolder("target/pacts")
 public class MessagePactVerificationTest {
 
@@ -36,10 +46,14 @@ public class MessagePactVerificationTest {
         context.setTarget(new MessageTestTarget());
     }
 
-    @PactVerifyProvider("an inventory requested event")
-    public MessageAndMetadata verifyInventoryRequestedEvent() {
-        ObjectNode payload = om.createObjectNode().put("orderId", ORDER_ID);
-        String envelopedMessage = EnvelopeHelper.envelope(ORDER_ID, "InventoryRequested", payload.toString());
+    @PactVerifyProvider("A payment result event")
+    public MessageAndMetadata verifyPaymentResultEvent() {
+        String resultPayload = om.createObjectNode()
+                .put("orderId", ORDER_ID)
+                .put("status", "CHARGED")
+                .put("amount", 123.45)
+                .toString();
+        String envelopedMessage = EnvelopeHelper.envelope(ORDER_ID, "PaymentResult", resultPayload);
         return new MessageAndMetadata(envelopedMessage.getBytes(), Map.of());
     }
 }

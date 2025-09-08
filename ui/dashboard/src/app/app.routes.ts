@@ -2,7 +2,7 @@ import { Routes } from '@angular/router';
 import { OrdersComponent } from './orders/orders.component';
 import { DlqComponent } from './dlq/dlq.component';
 import { ChaosComponent } from './chaos/chaos.component';
-import { SloComponent }s } from './slo/slo.component';
+import { SloComponent } from './slo/slo.component';
 import { LoginComponent } from './login/login.component';
 
 export const routes: Routes = [
