@@ -57,7 +57,7 @@ public class PaymentResultContractTest {
         
         // Test the actual message format
         Message message = messages.get(0);
-        String messageBody = new String(message.getContents());
+        String messageBody = message.getContents().valueAsString();
         
         // Verify the message can be parsed by our envelope helper
         var envelope = EnvelopeHelper.parse(messageBody);

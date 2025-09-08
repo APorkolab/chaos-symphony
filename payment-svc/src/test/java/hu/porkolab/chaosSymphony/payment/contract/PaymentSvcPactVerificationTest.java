@@ -85,8 +85,8 @@ public class PaymentSvcPactVerificationTest {
         // the message format defined in the contract
         MessageAndMetadata message = verifyPaymentRequestedMessage();
         
-        // Verify that the message format is valid and can be parsed
-        String messageContent = new String(message.getContents());
+        // Verify that the message format is valid and can be parsed  
+        String messageContent = new String((byte[]) message.getContents());
         
         // Test that EnvelopeHelper can parse it
         var envelope = EnvelopeHelper.parse(messageContent);
