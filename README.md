@@ -1,6 +1,6 @@
 # Chaos Symphony
 
-[![CI Build and Test](https://github.com/your-username/chaos-symphony/actions/workflows/ci.yml/badge.svg)](https://github.com/your-username/chaos-symphony/actions/workflows/ci.yml)
+[![CI Build and Test](https://github.com/APorkolab/chaos-symphony/actions/workflows/ci.yml/badge.svg)](https://github.com/APorkolab/chaos-symphony/actions/workflows/ci.yml)
 
 Chaos Symphony is a fictitious, event-driven, microservices-based system designed to demonstrate and teach advanced software engineering patterns. It simulates a simple payment processing workflow but focuses heavily on resilience, observability, and automated chaos engineering to ensure the system can withstand real-world failures.
 
@@ -16,13 +16,7 @@ This project is not just a demo; it's a hands-on lab. It's built to be broken, o
 
 ---
 
-*(Note: The following screenshots could not be generated due to Docker Hub pull rate limits in the automated environment. When run locally, this section would display live dashboards.)*
 
-**Example Distributed Trace:**
-> A screenshot from Jaeger or a similar tool would be displayed here, showing a single `createOrder` request propagating through `order-api`, `orchestrator`, `payment-svc`, and other services, all linked by a single `traceId`.
-
-**Example Grafana SLO Dashboard:**
-> A screenshot of the Grafana dashboard would be here, showing the p95 latency, availability, and DLQ count panels against their defined SLO thresholds.
 
 ---
 
