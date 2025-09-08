@@ -18,9 +18,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import java.util.Map;
 import java.util.UUID;
 
-@Disabled("Disabling this test as the consumer side (inventory-svc) is not implemented yet")
 @Provider("Orchestrator")
-@PactFolder("../inventory-svc/target/pacts")
+@PactFolder("target/pacts")
 public class MessagePactVerificationTest {
 
     private static final String ORDER_ID = UUID.randomUUID().toString();

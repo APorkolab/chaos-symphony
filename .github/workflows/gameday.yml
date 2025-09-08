@@ -43,7 +43,7 @@ jobs:
       - name: 'Step 3: Bootstrap Debezium Connector'
         run: |
           echo "Waiting for Kafka Connect to be ready..."
-          timeout 60s bash -c "until curl -s http://localhost:8083/connectors; do echo -n '.'; sleep 3; done"
+          timeout 60s bash -c "until curl -s http://localhost:8093/connectors; do echo -n '.'; sleep 3; done"
           echo -e "\nKafka Connect is UP. Registering connector..."
           ./scripts/bootstrap_cdc.sh
 

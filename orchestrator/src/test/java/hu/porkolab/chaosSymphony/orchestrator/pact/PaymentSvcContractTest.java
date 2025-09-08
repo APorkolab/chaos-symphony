@@ -36,10 +36,11 @@ public class PaymentSvcContractTest {
     public MessagePact createPaymentRequestedPact(MessagePactBuilder builder) {
         return builder
                 .expectsToReceive("A payment requested event")
-                .withContent(newJsonBody(o -> {
-                    o.stringType("orderId", "e7a4f431-b2e3-4b43-8a24-8e2b1d3a0e46");
-                    o.numberType("amount", 123.45);
-                    o.stringType("currency", "USD");
+                .withContent(newJsonBody(envelope -> {
+                    envelope.stringType("orderId", "e7a4f431-b2e3-4b43-8a24-8e2b1d3a0e46");
+                    envelope.stringType("eventId", "f8b5c2d1-3e4f-5a6b-7c8d-9e0f1a2b3c4d");
+                    envelope.stringType("type", "PaymentRequested");
+                    envelope.stringType("payload", "{\"orderId\":\"e7a4f431-b2e3-4b43-8a24-8e2b1d3a0e46\",\"amount\":123.45,\"currency\":\"USD\"}");
                 }).build())
                 .toPact();
     }

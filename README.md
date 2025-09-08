@@ -152,7 +152,7 @@ This checklist, derived from the project specification, tracks the implementatio
 - [x] **DLQ Policy:** Implemented with exponential backoff via Spring Kafka's `@RetryableTopic`.
 - [x] **Observability:** OTel traces, Prometheus metrics, and a Grafana SLO dashboard are all configured.
 - [x] **Testcontainers:** Used in the CI pipeline for integration testing against real dependencies.
-- [ ] **Contract Tests:** Pact tests are set up but not fully implemented.
+- [x] **Contract Tests:** Full Pact implementation with consumer tests in orchestrator and provider verification in payment-svc.
 - [x] **RUNBOOK:** A detailed `RUNBOOK.md` exists for common operational scenarios.
 - [x] **Automated GameDay:** A GitHub Actions workflow automates chaos experiments and reporting.
 - [x] **Replay Capability:** The system can replay the last 5 minutes of events for analysis.

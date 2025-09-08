@@ -1,0 +1,9 @@
+# This is a convenience wrapper to the main docker-compose.yml in the deployment directory
+# Run: docker-compose up -d --build
+# This allows users to run the system from the project root as documented
+
+version: "3.9"
+
+# Import all services from the main deployment configuration
+include:
+  - path: deployment/docker-compose.yml

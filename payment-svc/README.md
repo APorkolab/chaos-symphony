@@ -17,10 +17,23 @@ This service can be run in "canary" mode by activating the `canary` Spring profi
 
 This service acts as a "Provider" for the message contract defined by the `orchestrator` service.
 
-**Status: Disabled**
 
-The provider-side verification test (`PactVerificationTest.java`) has been removed from this service. While the consumer-side test in the `orchestrator` correctly generates the contract, a fundamental issue in the `common-messaging` module's build configuration prevents this service from successfully compiling the test.
 
-The `common-messaging` module's `pom.xml` is misconfigured, causing the Maven compiler to exclude critical, handwritten event classes from the final JAR artifact. As a result, any module that depends on these classes (like this service's Pact test) fails to compile.
+- `PaymentSvcPactVerificationTest.java` - Verifies this service can handle payment request messages as defined by the orchestrator
+- `PaymentResultContractTest.java` - Defines the contract for payment result messages this service produces
 
-Due to the complexity of the build issue, the Pact test has been disabled to allow the rest of the project to build and function correctly.
+**Running Contract Tests:**
+
+```bash
+# From project root
+./scripts/run-contract-tests.sh
+
+# Or manually:
+# 1. Generate consumer contracts
+cd orchestrator && mvn test -Dtest="*Pact*Test"
+
+# 2. Verify provider can handle contracts  
+cd ../payment-svc && mvn test -Dtest="*PactVerificationTest"
+```
+
+The contract tests ensure that the message formats between orchestrator and payment-svc remain compatible across changes.
