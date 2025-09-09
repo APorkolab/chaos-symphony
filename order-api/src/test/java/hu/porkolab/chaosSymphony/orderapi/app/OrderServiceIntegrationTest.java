@@ -36,7 +36,7 @@ class OrderServiceIntegrationTest {
     void createOrder_shouldSaveOrderAndOutboxEventAtomically() throws Exception {
         // Given
         String customerId = "test-customer-123";
-        CreateOrder command = new CreateOrder(BigDecimal.valueOf(99.99), customerId);
+        CreateOrder command = new CreateOrder(customerId, BigDecimal.valueOf(99.99), "USD");
 
         // When
         UUID orderId = orderService.createOrder(command);

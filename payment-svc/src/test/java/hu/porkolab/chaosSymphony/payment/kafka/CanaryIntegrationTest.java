@@ -1,5 +1,6 @@
 package hu.porkolab.chaosSymphony.payment.kafka;
 
+import hu.porkolab.chaosSymphony.common.EnvelopeHelper;
 import io.micrometer.core.instrument.Counter;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,7 +21,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
                 "spring.datasource.driver-class-name=org.h2.Driver",
                 "spring.datasource.username=sa",
                 "spring.datasource.password=",
-                "spring.jpa.database-platform=org.hibernate.dialect.H2Dialect"
+                "spring.jpa.database-platform=org.hibernate.dialect.H2Dialect",
+                "kafka.topic.payment.requested=payment.requested",
+                "kafka.topic.payment.requested.canary=payment.requested.canary",
+                "kafka.group.id.payment=payment-group",
+                "kafka.group.id.payment.canary=payment-canary-group"
         }
 )
 @DirtiesContext
@@ -51,7 +56,9 @@ class CanaryIntegrationTest {
         KafkaTemplate<String, String> template = new KafkaTemplate<>(pf);
 
         // When we send a message to the main topic
-        template.send(mainTopic, "order1", "{\"message\":\"to-main\"}");
+        String mainPayload = "{\"orderId\":\"order1\",\"amount\":100.0,\"currency\":\"USD\"}";
+        String mainEnvelope = EnvelopeHelper.envelope("order1", "PaymentRequested", mainPayload);
+        template.send(mainTopic, "order1", mainEnvelope);
 
         // Then the main counter should increment
         await().atMost(5, SECONDS).untilAsserted(() ->
@@ -59,7 +66,9 @@ class CanaryIntegrationTest {
         );
 
         // When we send a message to the canary topic
-        template.send(canaryTopic, "order2", "{\"message\":\"to-canary\"}");
+        String canaryPayload = "{\"orderId\":\"order2\",\"amount\":200.0,\"currency\":\"USD\"}";
+        String canaryEnvelope = EnvelopeHelper.envelope("order2", "PaymentRequested", canaryPayload);
+        template.send(canaryTopic, "order2", canaryEnvelope);
 
         // Then the canary counter should increment
         await().atMost(5, SECONDS).untilAsserted(() ->
