@@ -71,27 +71,4 @@ public class PaymentResultContractTest {
         assert payloadNode.path("status").asText().equals("CHARGED");
     }
 
-    @Test
-    public void testActualPaymentResultProduction() throws Exception {
-        // Test that our producer can create messages matching the contract
-        String orderId = "test-order-123";
-        String resultPayload = objectMapper.createObjectNode()
-                .put("orderId", orderId)
-                .put("status", "CHARGED")
-                .put("amount", 99.99)
-                .toString();
-        
-        // This would normally be called in the real flow
-        // paymentResultProducer.sendResult(orderId, resultPayload);
-        
-        // For testing, we just verify the envelope format is correct
-        String envelopedMessage = EnvelopeHelper.envelope(orderId, "PaymentResult", resultPayload);
-        var envelope = EnvelopeHelper.parse(envelopedMessage);
-        
-        assert envelope.getType().equals("PaymentResult");
-        assert envelope.getOrderId().equals(orderId);
-        
-        var payloadNode = objectMapper.readTree(envelope.getPayload());
-        assert payloadNode.path("status").asText().equals("CHARGED");
-    }
 }
